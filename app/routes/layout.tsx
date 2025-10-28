@@ -13,58 +13,47 @@ export default function AppLayout() {
 				<nav className="px-4">
 					<ul className="space-y-1">
 						<li>
-							<NavLink
-								to="/deployment"
-								className={({ isActive }) =>
-									`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
-										isActive
-											? "bg-gray-100 dark:bg-gray-700 font-medium"
-											: "text-gray-700 dark:text-gray-200"
-									}`
-								}
-							>
+							<NavLink to="/" end className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
+								Dashboard
+							</NavLink>
+						</li>
+						<li>
+							<NavLink to="/deployment" className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
 								Deployment
 							</NavLink>
 						</li>
 						<li>
-							<NavLink
-								to="/designer"
-								className={({ isActive }) =>
-									`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
-										isActive
-											? "bg-gray-100 dark:bg-gray-700 font-medium"
-											: "text-gray-700 dark:text-gray-200"
-									}`
-								}
-							>
+							<NavLink to="/designer" className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
 								Designer
 							</NavLink>
 						</li>
 						<li>
-							<NavLink
-								to="/management"
-								className={({ isActive }) =>
-									`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
-										isActive
-											? "bg-gray-100 dark:bg-gray-700 font-medium"
-											: "text-gray-700 dark:text-gray-200"
-									}`
-								}
-							>
+							<NavLink to="/management" className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
 								Management
 							</NavLink>
 						</li>
 						<li>
-							<NavLink
-								to="/explorer"
-								className={({ isActive }) =>
-									`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${
-										isActive
-											? "bg-gray-100 dark:bg-gray-700 font-medium"
-											: "text-gray-700 dark:text-gray-200"
-									}`
-								}
-							>
+							<NavLink to="/explorer" className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
 								Explorer
 							</NavLink>
 						</li>
