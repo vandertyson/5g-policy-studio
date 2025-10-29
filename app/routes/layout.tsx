@@ -6,9 +6,14 @@ export default function AppLayout() {
 		<div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
 			<aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
 				<div className="p-6">
-					<span className="font-semibold text-lg text-gray-900 dark:text-gray-100">
-						5G Policy Studio
-					</span>
+					{/* Prominent single-line sidebar title */}
+					<h2
+						style={{ fontSize: "clamp(1rem, 3.2vw, 1.25rem)" }}
+						className="font-extrabold leading-tight whitespace-nowrap truncate text-gray-900 dark:text-gray-100"
+						title="5G Studio Policy"
+					>
+						5G Studio Policy
+					</h2>
 				</div>
 				<nav className="px-4">
 					<ul className="space-y-1">

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Descriptions, Form, Input, Button, Card, Tabs as AntTabs, Collapse, Space } from "antd";
 import { PlatformConfig } from "../../components/platforms/PlatformConfig";
+import FeatureAccordion, { type FeaturesConfig } from "../../components/features/FeatureAccordion";
 
 const { Panel } = Collapse;
 
@@ -29,10 +30,10 @@ export default function DeploymentDetail() {
 	const [platformCfg, setPlatformCfg] = useState<Record<string, string>>(details?.config ?? {});
 	// features edit state
 	const [editingFeatures, setEditingFeatures] = useState(false);
-	const [featureConfig, setFeatureConfig] = useState({
-		pcfRadio: { enabled: true, paramA: "default" },
-		pcfCore: { enabled: false, paramX: "val" },
-	});
+	const [featureConfig, setFeatureConfig] = useState<FeaturesConfig>({		
+		sessionManagement: {},
+		nonSessionManagement: {},
+	} as unknown as FeaturesConfig);
 
 	React.useEffect(() => {
 		if (details) {
@@ -174,43 +175,12 @@ export default function DeploymentDetail() {
 							<Button onClick={() => setEditingFeatures(true)}>Edit</Button>
 						)}
 					</div>
-
-					{editingFeatures ? (
-						<Collapse accordion>
-							<Panel header="PCF Radio" key="1">
-								<Form layout="vertical">
-									<Form.Item label="Enable PCF Radio">
-										<Input value={featureConfig.pcfRadio.enabled ? "on" : "off"} onChange={(e) => setFeatureConfig((s) => ({ ...s, pcfRadio: { ...s.pcfRadio, enabled: e.target.value === "on" } }))} />
-									</Form.Item>
-									<Form.Item label="Param A">
-										<Input value={featureConfig.pcfRadio.paramA} onChange={(e) => setFeatureConfig((s) => ({ ...s, pcfRadio: { ...s.pcfRadio, paramA: e.target.value } }))} />
-									</Form.Item>
-								</Form>
-							</Panel>
-
-							<Panel header="PCF Core" key="2">
-								<Form layout="vertical">
-									<Form.Item label="Enable PCF Core">
-										<Input value={featureConfig.pcfCore.enabled ? "on" : "off"} onChange={(e) => setFeatureConfig((s) => ({ ...s, pcfCore: { ...s.pcfCore, enabled: e.target.value === "on" } }))} />
-									</Form.Item>
-									<Form.Item label="Param X">
-										<Input value={featureConfig.pcfCore.paramX} onChange={(e) => setFeatureConfig((s) => ({ ...s, pcfCore: { ...s.pcfCore, paramX: e.target.value } }))} />
-									</Form.Item>
-								</Form>
-							</Panel>
-						</Collapse>
-					) : (
-						<Collapse accordion>
-							<Panel header="PCF Radio" key="1">
-								<div>Enabled: {featureConfig.pcfRadio.enabled ? "Yes" : "No"}</div>
-								<div>Param A: {featureConfig.pcfRadio.paramA}</div>
-							</Panel>
-							<Panel header="PCF Core" key="2">
-								<div>Enabled: {featureConfig.pcfCore.enabled ? "Yes" : "No"}</div>
-								<div>Param X: {featureConfig.pcfCore.paramX}</div>
-							</Panel>
-						</Collapse>
-					)}
+					{/* FeatureAccordion shows tree with switches; mode toggles edit/view */}
+					<FeatureAccordion
+						mode={editingFeatures ? "edit" : "view"}
+						initial={featureConfig}
+						onChange={(next) => setFeatureConfig(next as FeaturesConfig)}
+					/>
 				</Card>
 			),
 		},
