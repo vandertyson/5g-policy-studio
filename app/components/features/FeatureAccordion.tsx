@@ -45,6 +45,13 @@ export type FeaturesConfig = {
             trending?: boolean;
         };
     };
+    // System & Integration group
+    systemAndIntegration?: {
+        policyEngine?: { mode?: "builtin" | "vocs" | "custom" };
+        subscriptionManagement?: { mode?: "builtin" | "vocs" };
+        automation?: { recurring?: boolean; cleaning?: boolean; orchestration?: boolean };
+        security?: { oauth2?: boolean; tls?: boolean; mtls?: boolean };
+    };
 };
 
 // add helper to count booleans in a subtree
@@ -55,6 +62,30 @@ function countBooleans(obj: any) {
         if (typeof v === "boolean") {
             total++;
             if (v) enabled++;
+            return;
+        }
+        if (v && typeof v === "object") {
+            for (const k of Object.keys(v)) walk(v[k]);
+        }
+    }
+    walk(obj);
+    return { enabled, total };
+}
+
+// add helper to count mixed types (boolean + string choices) for system group
+function countMixed(obj: any) {
+    let enabled = 0;
+    let total = 0;
+    function walk(v: any) {
+        if (typeof v === "boolean") {
+            total++;
+            if (v) enabled++;
+            return;
+        }
+        if (typeof v === "string") {
+            total++;
+            // treat 'builtin' as disabled, others as enabled
+            if (v && v !== "builtin") enabled++;
             return;
         }
         if (v && typeof v === "object") {
@@ -119,6 +150,13 @@ export default function FeatureAccordion({
         intelligenceAndOptimization: {
             aiPolicies: { modelSelection: true, autoTuning: false, policyLearning: false },
             analytics: { anomalyDetection: true, rootCauseAnalysis: false, trending: false },
+        },
+        // defaults for System & Integration
+        systemAndIntegration: {
+            policyEngine: { mode: "builtin" },
+            subscriptionManagement: { mode: "builtin" },
+            automation: { recurring: false, cleaning: false, orchestration: false },
+            security: { oauth2: true, tls: true, mtls: false },
         },
     };
 
@@ -198,24 +236,64 @@ export default function FeatureAccordion({
     const aiPoliciesCounts = intelligenceMerged.aiPolicies ? countBooleans(intelligenceMerged.aiPolicies) : { enabled: 0, total: 0 };
     const analyticsCounts = intelligenceMerged.analytics ? countBooleans(intelligenceMerged.analytics) : { enabled: 0, total: 0 };
 
-    // second-level subgroup counts for Session Management
-    const policyControlCounts = cfg.sessionManagement?.policyControl ? countBooleans(cfg.sessionManagement.policyControl) : { enabled: 0, total: 0 };
-    const qosCounts = cfg.sessionManagement?.policyControl?.qosControl ? countBooleans(cfg.sessionManagement.policyControl.qosControl) : { enabled: 0, total: 0 };
-    const usageAspectCounts = cfg.sessionManagement?.usageMonitoring?.aspect ? countBooleans(cfg.sessionManagement.usageMonitoring.aspect) : { enabled: 0, total: 0 };
-    const usageLevelCounts = cfg.sessionManagement?.usageMonitoring?.level ? countBooleans(cfg.sessionManagement.usageMonitoring.level) : { enabled: 0, total: 0 };
-    const applicationDetectionCounts = typeof cfg.sessionManagement?.applicationDetection === "boolean" ? { enabled: cfg.sessionManagement.applicationDetection ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
-    const trafficSteeringCounts = cfg.sessionManagement?.trafficSteering ? countBooleans(cfg.sessionManagement.trafficSteering) : { enabled: 0, total: 0 };
-    const exposureSessionCounts = cfg.sessionManagement?.exposureCapability ? countBooleans(cfg.sessionManagement.exposureCapability) : { enabled: 0, total: 0 };
+    // Traffic Steering counts (merge defaults with current to ensure keys present)
+    const trafficSteeringDefault = defaultCfg.sessionManagement?.trafficSteering ?? {};
+    const trafficSteeringCurrent = cfg.sessionManagement?.trafficSteering ?? {};
+    const trafficSteeringMerged: any = mergeDeep(trafficSteeringDefault as any, trafficSteeringCurrent as any);
+    const trafficSteeringCounts = trafficSteeringMerged ? countBooleans(trafficSteeringMerged) : { enabled: 0, total: 0 };
 
-    // second-level subgroup counts for Non-Session Management
-    const accessMobilityCounts = typeof cfg.nonSessionManagement?.accessAndMobilityPolicy === "boolean" ? { enabled: cfg.nonSessionManagement.accessAndMobilityPolicy ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
-    const uePolicyCounts = cfg.nonSessionManagement?.uePolicyControl ? countBooleans(cfg.nonSessionManagement.uePolicyControl) : { enabled: 0, total: 0 };
-    const multicastCounts = typeof cfg.nonSessionManagement?.multicastBroadcast === "boolean" ? { enabled: cfg.nonSessionManagement.multicastBroadcast ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
-    // exposureCapability is an object with multiple boolean leaves — count them
-    const exposureNonSessionCounts = cfg.nonSessionManagement?.exposureCapability ? countBooleans(cfg.nonSessionManagement.exposureCapability) : { enabled: 0, total: 0 };
+    // Policy Control & QoS counts
+    const policyControlDefault = defaultCfg.sessionManagement?.policyControl ?? {};
+    const policyControlCurrent = cfg.sessionManagement?.policyControl ?? {};
+    const policyControlMerged: any = mergeDeep(policyControlDefault as any, policyControlCurrent as any);
+    const policyControlCounts = policyControlMerged ? countBooleans(policyControlMerged) : { enabled: 0, total: 0 };
 
-    // second-level subgroup counts for Intelligence & Optimization
-    // counts for AI Policies and Analytics are computed from intelligenceMerged above (avoid redeclaring aiPoliciesCounts/analyticsCounts)
+    const qosDefault = defaultCfg.sessionManagement?.policyControl?.qosControl ?? {};
+    const qosCurrent = cfg.sessionManagement?.policyControl?.qosControl ?? {};
+    const qosMerged: any = mergeDeep(qosDefault as any, qosCurrent as any);
+    const qosCounts = qosMerged ? countBooleans(qosMerged) : { enabled: 0, total: 0 };
+
+    // Usage monitoring counts
+    const usageAspectDefault = defaultCfg.sessionManagement?.usageMonitoring?.aspect ?? {};
+    const usageAspectCurrent = cfg.sessionManagement?.usageMonitoring?.aspect ?? {};
+    const usageAspectMerged: any = mergeDeep(usageAspectDefault as any, usageAspectCurrent as any);
+    const usageAspectCounts = usageAspectMerged ? countBooleans(usageAspectMerged) : { enabled: 0, total: 0 };
+
+    const usageLevelDefault = defaultCfg.sessionManagement?.usageMonitoring?.level ?? {};
+    const usageLevelCurrent = cfg.sessionManagement?.usageMonitoring?.level ?? {};
+    const usageLevelMerged: any = mergeDeep(usageLevelDefault as any, usageLevelCurrent as any);
+    const usageLevelCounts = usageLevelMerged ? countBooleans(usageLevelMerged) : { enabled: 0, total: 0 };
+
+    // Application Detection
+    const applicationDetectionCounts = countBooleans({ applicationDetection: cfg.sessionManagement?.applicationDetection ?? defaultCfg.sessionManagement?.applicationDetection });
+
+    // Exposure capability (session)
+    const exposureSessionDefault = defaultCfg.sessionManagement?.exposureCapability ?? {};
+    const exposureSessionCurrent = cfg.sessionManagement?.exposureCapability ?? {};
+    const exposureSessionMerged: any = mergeDeep(exposureSessionDefault as any, exposureSessionCurrent as any);
+    const exposureSessionCounts = exposureSessionMerged ? countBooleans(exposureSessionMerged) : { enabled: 0, total: 0 };
+
+    // Non-session counts
+    const accessMobilityCounts = countBooleans({ accessAndMobilityPolicy: cfg.nonSessionManagement?.accessAndMobilityPolicy ?? defaultCfg.nonSessionManagement?.accessAndMobilityPolicy });
+    const uePolicyDefault = defaultCfg.nonSessionManagement?.uePolicyControl ?? {};
+    const uePolicyCurrent = cfg.nonSessionManagement?.uePolicyControl ?? {};
+    const uePolicyMerged: any = mergeDeep(uePolicyDefault as any, uePolicyCurrent as any);
+    const uePolicyCounts = uePolicyMerged ? countBooleans(uePolicyMerged) : { enabled: 0, total: 0 };
+    const multicastCounts = countBooleans({ multicastBroadcast: cfg.nonSessionManagement?.multicastBroadcast ?? defaultCfg.nonSessionManagement?.multicastBroadcast });
+    const exposureNonSessionDefault = defaultCfg.nonSessionManagement?.exposureCapability ?? {};
+    const exposureNonSessionCurrent = cfg.nonSessionManagement?.exposureCapability ?? {};
+    const exposureNonSessionMerged: any = mergeDeep(exposureNonSessionDefault as any, exposureNonSessionCurrent as any);
+    const exposureNonSessionCounts = exposureNonSessionMerged ? countBooleans(exposureNonSessionMerged) : { enabled: 0, total: 0 };
+
+    // counts for System & Integration (merge defaults with current to ensure keys present)
+    const systemDefault = defaultCfg.systemAndIntegration ?? {};
+    const systemCurrent = cfg.systemAndIntegration ?? {};
+    const systemMerged: any = mergeDeep(systemDefault as any, systemCurrent as any);
+    const systemCounts = systemMerged ? countMixed(systemMerged) : { enabled: 0, total: 0 };
+    const policyEngineCounts = systemMerged?.policyEngine ? countMixed(systemMerged.policyEngine) : { enabled: 0, total: 0 };
+    const subscriptionCounts = systemMerged?.subscriptionManagement ? countMixed(systemMerged.subscriptionManagement) : { enabled: 0, total: 0 };
+    const automationCounts = systemMerged?.automation ? countBooleans(systemMerged.automation) : { enabled: 0, total: 0 };
+    const securityCounts = systemMerged?.security ? countBooleans(systemMerged.security) : { enabled: 0, total: 0 };
 
     return (
         /* allow multiple top-level panels open */
@@ -371,6 +449,83 @@ export default function FeatureAccordion({
                             </LeafBox>
                         </div>
                     </Panel>
+                </Collapse>
+            </Panel>
+
+            {/* System & Integration (new) */}
+            <Panel header={<GroupHeader count={systemCounts}>System & Integration</GroupHeader>} key="system-integration">
+                <Collapse ghost>
+                    <Panel header={<SubGroupHeader count={policyEngineCounts}>Policy Engine</SubGroupHeader>} key="policy-engine">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                {/* Radio choices */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <label className="text-sm font-medium">Mode</label>
+                                    <div>
+                                        <Space direction="vertical">
+                                            <label>
+                                                <input type="radio" name={`policyMode-${String(Math.random())}`} checked={cfg.systemAndIntegration?.policyEngine?.mode === "builtin"} onChange={() => update(["systemAndIntegration", "policyEngine", "mode"], "builtin" as any)} />
+                                                <span className="ml-2">Built-in</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name={`policyMode`} checked={cfg.systemAndIntegration?.policyEngine?.mode === "vocs"} onChange={() => update(["systemAndIntegration", "policyEngine", "mode"], "vocs" as any)} />
+                                                <span className="ml-2">vOCS Integration</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name={`policyMode`} checked={cfg.systemAndIntegration?.policyEngine?.mode === "custom"} onChange={() => update(["systemAndIntegration", "policyEngine", "mode"], "custom" as any)} />
+                                                <span className="ml-2">Custom</span>
+                                            </label>
+                                        </Space>
+                                    </div>
+                                </div>
+                            </LeafBox>
+                        </div>
+                    </Panel>
+
+                    <Panel header={<SubGroupHeader count={subscriptionCounts}>Subscription Management</SubGroupHeader>} key="subscription-management">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <label className="text-sm font-medium">Mode</label>
+                                    <div>
+                                        <Space direction="vertical">
+                                            <label>
+                                                <input type="radio" name={`subMode-${String(Math.random())}`} checked={cfg.systemAndIntegration?.subscriptionManagement?.mode === "builtin"} onChange={() => update(["systemAndIntegration", "subscriptionManagement", "mode"], "builtin" as any)} />
+                                                <span className="ml-2">Built-in</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name={`subMode`} checked={cfg.systemAndIntegration?.subscriptionManagement?.mode === "vocs"} onChange={() => update(["systemAndIntegration", "subscriptionManagement", "mode"], "vocs" as any)} />
+                                                <span className="ml-2">vOCS Integration</span>
+                                            </label>
+                                        </Space>
+                                    </div>
+                                </div>
+                            </LeafBox>
+                        </div>
+                    </Panel>
+
+                    <Panel header={<SubGroupHeader count={automationCounts}>Automation</SubGroupHeader>} key="automation">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                <RowSwitch label="Recurring" checked={cfg.systemAndIntegration?.automation?.recurring} onToggle={(v) => update(["systemAndIntegration", "automation", "recurring"], v)} />
+                                <RowSwitch label="Cleaning" checked={cfg.systemAndIntegration?.automation?.cleaning} onToggle={(v) => update(["systemAndIntegration", "automation", "cleaning"], v)} />
+                                <RowSwitch label="Orchestration" checked={cfg.systemAndIntegration?.automation?.orchestration} onToggle={(v) => update(["systemAndIntegration", "automation", "orchestration"], v)} />
+                            </LeafBox>
+                        </div>
+                    </Panel>
+
+                    <Panel header={<SubGroupHeader count={securityCounts}>Security</SubGroupHeader>} key="security">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                <RowSwitch label="OAuth2" checked={cfg.systemAndIntegration?.security?.oauth2} onToggle={(v) => update(["systemAndIntegration", "security", "oauth2"], v)} />
+                                <RowSwitch label="TLS" checked={cfg.systemAndIntegration?.security?.tls} onToggle={(v) => update(["systemAndIntegration", "security", "tls"], v)} />
+                                <RowSwitch label="mTLS" checked={cfg.systemAndIntegration?.security?.mtls} onToggle={(v) => update(["systemAndIntegration", "security", "mtls"], v)} />
+                            </LeafBox>
+                        </div>
+                    </Panel>
+
+                    {/* Intelligence & Optimization (if present earlier) */}
+                    {/* ...existing code... */}
                 </Collapse>
             </Panel>
         </Collapse>

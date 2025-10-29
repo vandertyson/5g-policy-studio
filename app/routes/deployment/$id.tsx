@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Descriptions, Form, Input, Button, Card, Tabs as AntTabs, Collapse, Space } from "antd";
 import { PlatformConfig } from "../../components/platforms/PlatformConfig";
 import FeatureAccordion, { type FeaturesConfig } from "../../components/features/FeatureAccordion";
+import ExportImportControls from "../../components/ExportImportControls";
 
 const { Panel } = Collapse;
 
@@ -30,10 +31,55 @@ export default function DeploymentDetail() {
 	const [platformCfg, setPlatformCfg] = useState<Record<string, string>>(details?.config ?? {});
 	// features edit state
 	const [editingFeatures, setEditingFeatures] = useState(false);
-	const [featureConfig, setFeatureConfig] = useState<FeaturesConfig>({		
+	const [featureConfig, setFeatureConfig] = useState<FeaturesConfig>({
 		sessionManagement: {},
 		nonSessionManagement: {},
 	} as unknown as FeaturesConfig);
+
+	// file input ref for Import
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+	// Export current features as JSON (browser download) — demo only
+	function exportFeatures() {
+		try {
+			const data = featureConfig ?? {};
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${details?.name ?? "deployment"}-features.json`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+		} catch (e) {
+			// placeholder error handling
+			alert("Failed to export features");
+		}
+	}
+
+	// Trigger hidden file input
+	function triggerImport() {
+		fileInputRef.current?.click();
+	}
+
+	// Handle file selected for import (demo: parse JSON and set into state)
+	async function onImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+		const f = e.target.files?.[0];
+		if (!f) return;
+		try {
+			const txt = await f.text();
+			const parsed = JSON.parse(txt);
+			// basic assignment — in real app validate structure
+			setFeatureConfig(parsed as FeaturesConfig);
+			alert("Imported feature config (demo)");
+		} catch {
+			alert("Invalid JSON file");
+		} finally {
+			// reset input so same file can be re-selected
+			e.target.value = "";
+		}
+	}
 
 	React.useEffect(() => {
 		if (details) {
@@ -139,10 +185,21 @@ export default function DeploymentDetail() {
 			content: (
 				<Card>
 					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+						{/* Export / Import + Edit controls for Platform (reusable) */}
+						<ExportImportControls
+							data={platformCfg}
+							onImport={(d) => {
+								// basic assignment; validate in real app
+								setPlatformCfg(d as Record<string, string>);
+							}}
+							filenamePrefix={`${details?.name ?? "deployment"}-platform`}
+							className="mr-4"
+						/>
+
 						{editingPlatform ? (
 							<Space>
 								<Button onClick={cancelPlatform}>Cancel</Button>
-								<Button type="primary" onClick={() => metaForm.validateFields().then(() => {})}> {/* placeholder to keep layout */}Save</Button>
+								<Button type="primary" onClick={() => metaForm.validateFields().then(() => {})}>Save</Button>
 							</Space>
 						) : (
 							<Button onClick={() => setEditingPlatform(true)}>Edit</Button>
@@ -166,6 +223,16 @@ export default function DeploymentDetail() {
 			content: (
 				<Card>
 					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+						{/* Export / Import + Edit controls for Features (reusable) */}
+						<ExportImportControls
+							data={featureConfig}
+							onImport={(d) => {
+								setFeatureConfig(d as FeaturesConfig);
+							}}
+							filenamePrefix={`${details?.name ?? "deployment"}-features`}
+							className="mr-4"
+						/>
+
 						{editingFeatures ? (
 							<Space>
 								<Button onClick={cancelFeatures}>Cancel</Button>
@@ -175,7 +242,7 @@ export default function DeploymentDetail() {
 							<Button onClick={() => setEditingFeatures(true)}>Edit</Button>
 						)}
 					</div>
-					{/* FeatureAccordion shows tree with switches; mode toggles edit/view */}
+
 					<FeatureAccordion
 						mode={editingFeatures ? "edit" : "view"}
 						initial={featureConfig}
