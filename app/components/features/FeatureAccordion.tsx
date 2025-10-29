@@ -32,6 +32,19 @@ export type FeaturesConfig = {
         multicastBroadcast?: boolean;
         exposureCapability?: { plannedDataTransfer?: boolean; backgroundDataTransfer?: boolean; afGuidance?: boolean };
     };
+    // new top-level group
+    intelligenceAndOptimization?: {
+        aiPolicies?: {
+            modelSelection?: boolean;
+            autoTuning?: boolean;
+            policyLearning?: boolean;
+        };
+        analytics?: {
+            anomalyDetection?: boolean;
+            rootCauseAnalysis?: boolean;
+            trending?: boolean;
+        };
+    };
 };
 
 // add helper to count booleans in a subtree
@@ -103,6 +116,10 @@ export default function FeatureAccordion({
             multicastBroadcast: false,
             exposureCapability: { plannedDataTransfer: false, backgroundDataTransfer: false, afGuidance: true },
         },
+        intelligenceAndOptimization: {
+            aiPolicies: { modelSelection: true, autoTuning: false, policyLearning: false },
+            analytics: { anomalyDetection: true, rootCauseAnalysis: false, trending: false },
+        },
     };
 
     const [cfg, setCfg] = React.useState<FeaturesConfig>(() => mergeDeep(defaultCfg, initial));
@@ -173,6 +190,13 @@ export default function FeatureAccordion({
     // compute counts for top-level groups
     const sessionCounts = cfg.sessionManagement ? countBooleans(cfg.sessionManagement) : { enabled: 0, total: 0 };
     const nonSessionCounts = cfg.nonSessionManagement ? countBooleans(cfg.nonSessionManagement) : { enabled: 0, total: 0 };
+    // ensure we merge defaults with current cfg so missing keys don't yield 0/0
+    const intelligenceDefault = defaultCfg.intelligenceAndOptimization ?? {};
+    const intelligenceCurrent = cfg.intelligenceAndOptimization ?? {};
+    const intelligenceMerged: any = mergeDeep(intelligenceDefault as any, intelligenceCurrent as any);
+    const intelligenceCounts = intelligenceMerged ? countBooleans(intelligenceMerged) : { enabled: 0, total: 0 };
+    const aiPoliciesCounts = intelligenceMerged.aiPolicies ? countBooleans(intelligenceMerged.aiPolicies) : { enabled: 0, total: 0 };
+    const analyticsCounts = intelligenceMerged.analytics ? countBooleans(intelligenceMerged.analytics) : { enabled: 0, total: 0 };
 
     // second-level subgroup counts for Session Management
     const policyControlCounts = cfg.sessionManagement?.policyControl ? countBooleans(cfg.sessionManagement.policyControl) : { enabled: 0, total: 0 };
@@ -187,7 +211,11 @@ export default function FeatureAccordion({
     const accessMobilityCounts = typeof cfg.nonSessionManagement?.accessAndMobilityPolicy === "boolean" ? { enabled: cfg.nonSessionManagement.accessAndMobilityPolicy ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
     const uePolicyCounts = cfg.nonSessionManagement?.uePolicyControl ? countBooleans(cfg.nonSessionManagement.uePolicyControl) : { enabled: 0, total: 0 };
     const multicastCounts = typeof cfg.nonSessionManagement?.multicastBroadcast === "boolean" ? { enabled: cfg.nonSessionManagement.multicastBroadcast ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
-    const exposureNonSessionCounts = typeof cfg.nonSessionManagement?.exposureCapability === "boolean" ? { enabled: cfg.nonSessionManagement.exposureCapability ? 1 : 0, total: 1 } : { enabled: 0, total: 0 };
+    // exposureCapability is an object with multiple boolean leaves — count them
+    const exposureNonSessionCounts = cfg.nonSessionManagement?.exposureCapability ? countBooleans(cfg.nonSessionManagement.exposureCapability) : { enabled: 0, total: 0 };
+
+    // second-level subgroup counts for Intelligence & Optimization
+    // counts for AI Policies and Analytics are computed from intelligenceMerged above (avoid redeclaring aiPoliciesCounts/analyticsCounts)
 
     return (
         /* allow multiple top-level panels open */
@@ -315,6 +343,31 @@ export default function FeatureAccordion({
                                 <RowSwitch label="Background Data Transfer" checked={cfg.nonSessionManagement?.exposureCapability?.backgroundDataTransfer} onToggle={(v) => update(["nonSessionManagement", "exposureCapability", "backgroundDataTransfer"], v)} />
                                 <RowSwitch label="Planned Data Transfer" checked={cfg.nonSessionManagement?.exposureCapability?.plannedDataTransfer} onToggle={(v) => update(["nonSessionManagement", "exposureCapability", "plannedDataTransfer"], v)} />
                                 <RowSwitch label="AF Guidance" checked={cfg.nonSessionManagement?.exposureCapability?.afGuidance} onToggle={(v) => update(["nonSessionManagement", "exposureCapability", "afGuidance"], v)} />
+                            </LeafBox>
+                        </div>
+                    </Panel>
+                </Collapse>
+            </Panel>
+
+            {/* Intelligence & Optimization (new) */}
+            <Panel header={<GroupHeader count={intelligenceCounts}>Intelligence & Optimization</GroupHeader>} key="intelligence">
+                <Collapse ghost>
+                    <Panel header={<SubGroupHeader count={aiPoliciesCounts}>AI Policies</SubGroupHeader>} key="ai-policies">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                <RowSwitch label="Model Selection" checked={cfg.intelligenceAndOptimization?.aiPolicies?.modelSelection} onToggle={(v) => update(["intelligenceAndOptimization", "aiPolicies", "modelSelection"], v)} />
+                                <RowSwitch label="Auto-Tuning" checked={cfg.intelligenceAndOptimization?.aiPolicies?.autoTuning} onToggle={(v) => update(["intelligenceAndOptimization", "aiPolicies", "autoTuning"], v)} />
+                                <RowSwitch label="Policy Learning" checked={cfg.intelligenceAndOptimization?.aiPolicies?.policyLearning} onToggle={(v) => update(["intelligenceAndOptimization", "aiPolicies", "policyLearning"], v)} />
+                            </LeafBox>
+                        </div>
+                    </Panel>
+
+                    <Panel header={<SubGroupHeader count={analyticsCounts}>Analytics</SubGroupHeader>} key="analytics">
+                        <div style={{ marginLeft: subgroupIndent * 16 }}>
+                            <LeafBox indentLevel={childIndent}>
+                                <RowSwitch label="Anomaly Detection" checked={cfg.intelligenceAndOptimization?.analytics?.anomalyDetection} onToggle={(v) => update(["intelligenceAndOptimization", "analytics", "anomalyDetection"], v)} />
+                                <RowSwitch label="Root Cause Analysis" checked={cfg.intelligenceAndOptimization?.analytics?.rootCauseAnalysis} onToggle={(v) => update(["intelligenceAndOptimization", "analytics", "rootCauseAnalysis"], v)} />
+                                <RowSwitch label="Trending" checked={cfg.intelligenceAndOptimization?.analytics?.trending} onToggle={(v) => update(["intelligenceAndOptimization", "analytics", "trending"], v)} />
                             </LeafBox>
                         </div>
                     </Panel>
