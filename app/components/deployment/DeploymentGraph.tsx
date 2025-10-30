@@ -1,124 +1,371 @@
 import React from "react";
-import ReactFlow, { MiniMap, Controls, Background, type Node, type Edge, Handle, Position } from "reactflow";
-import "reactflow/dist/style.css";
+import ReactFlow, {
+	Background,
+	Controls,
+	MiniMap
+} from "reactflow";
+import type { Edge, Node } from "reactflow";
+import 'reactflow/dist/style.css';
 
-/**
- * Custom node components with illustrative shapes:
- * - DB: vertical cylinder
- * - Queue: horizontal cylinder
- * - Logic: rounded rectangle
- * - Gateway: rectangle
- * - External: cloud
- *
- * These are visual-only placeholder nodes.
- */
-
-function GatewayNode({ data }: any) {
+// lightweight box label
+function BoxLabel({
+	title,
+	subtitle,
+	kpis,
+	tone = "default",
+}: {
+	title: string;
+	subtitle?: string;
+	kpis?: { label: string; value: string }[];
+	tone?: "default" | "warn" | "error";
+}) {
+	const bg = tone === "error" ? "#FEF2F2" : tone === "warn" ? "#FFFBEB" : "#F0FDF4";
+	const border = tone === "error" ? "#FCA5A5" : tone === "warn" ? "#FCD34D" : "#86EFAC";
 	return (
-		<div style={{ padding: 6, textAlign: "center" }}>
-			<Handle type="target" position={Position.Top} />
-			<svg width="160" height="48" viewBox="0 0 160 48" xmlns="http://www.w3.org/2000/svg">
-				<rect x="2" y="6" width="156" height="36" rx="6" fill="#0ea5a4" stroke="#075e7a" />
-				<text x="80" y="30" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="600">{data.label}</text>
-			</svg>
-			<Handle type="source" position={Position.Bottom} />
+		<div style={{ border: `1px solid ${border}`, background: bg, borderRadius: 6, padding: 8 }}>
+			<div style={{ fontSize: 12, fontWeight: 600 }}>{title}</div>
+			{subtitle ? <div style={{ fontSize: 11, color: "#6b7280" }}>{subtitle}</div> : null}
+			{(kpis?.length ?? 0) > 0 ? (
+				<div style={{ marginTop: 4 }}>
+					{kpis!.map((k) => (
+						<div key={k.label} style={{ fontSize: 11, lineHeight: "16px" }}>
+							<span style={{ color: "#6b7280" }}>{k.label}: </span>
+							<span style={{ fontWeight: 600 }}>{k.value}</span>
+						</div>
+					))}
+				</div>
+			) : null}
 		</div>
 	);
 }
 
-function LogicNode({ data }: any) {
+// group node label
+function GroupLabel({ title }: { title: string }) {
 	return (
-		<div style={{ padding: 6, textAlign: "center" }}>
-			<Handle type="target" position={Position.Top} />
-			<svg width="140" height="64" viewBox="0 0 140 64" xmlns="http://www.w3.org/2000/svg">
-				<rect x="4" y="6" width="132" height="52" rx="10" fill="#f97316" stroke="#7c2d12" />
-				<text x="70" y="38" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">{data.label}</text>
-			</svg>
-			<Handle type="source" position={Position.Bottom} />
+		<div style={{ border: "1px solid #c7d2fe", background: "#eff6ff", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>
+			{title}
 		</div>
 	);
 }
-
-function DBNode({ data }: any) {
-	// vertical cylinder: top ellipse, rect body, bottom ellipse
-	return (
-		<div style={{ padding: 6, textAlign: "center" }}>
-			<Handle type="target" position={Position.Top} />
-			<svg width="100" height="120" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
-				<ellipse cx="50" cy="18" rx="36" ry="12" fill="#10b981" stroke="#064e3b" />
-				<rect x="14" y="18" width="72" height="72" fill="#06b6d4" stroke="#065f46" />
-				<ellipse cx="50" cy="90" rx="36" ry="12" fill="#06b6d4" stroke="#065f46" />
-				<text x="50" y="62" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">{data.label}</text>
-			</svg>
-			<Handle type="source" position={Position.Bottom} />
-		</div>
-	);
-}
-
-function QueueNode({ data }: any) {
-	// horizontal cylinder: left ellipse, rect body, right ellipse
-	return (
-		<div style={{ padding: 6, textAlign: "center" }}>
-			<Handle type="target" position={Position.Top} />
-			<svg width="220" height="80" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg">
-				<ellipse cx="40" cy="40" rx="28" ry="30" fill="#8b5cf6" stroke="#4c1d95" />
-				<rect x="40" y="10" width="140" height="60" fill="#7c3aed" stroke="#4c1d95" />
-				<ellipse cx="180" cy="40" rx="28" ry="30" fill="#8b5cf6" stroke="#4c1d95" />
-				<text x="110" y="46" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">{data.label}</text>
-			</svg>
-			<Handle type="source" position={Position.Bottom} />
-		</div>
-	);
-}
-
-function ExternalNode({ data }: any) {
-	// simple cloud
-	return (
-		<div style={{ padding: 6, textAlign: "center" }}>
-			<Handle type="target" position={Position.Top} />
-			<svg width="160" height="80" viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
-				<path d="M40 50a16 16 0 0 1 0-32 24 24 0 0 1 46-8 20 20 0 0 1 62 18 18 18 0 0 1 -6 36H40z" fill="#60a5fa" stroke="#1e3a8a" />
-				<text x="80" y="50" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">{data.label}</text>
-			</svg>
-			<Handle type="source" position={Position.Bottom} />
-		</div>
-	);
-}
-
-// register node types
-const nodeTypes = {
-	gateway: GatewayNode,
-	logic: LogicNode,
-	db: DBNode,
-	queue: QueueNode,
-	external: ExternalNode,
-};
 
 export default function DeploymentGraph() {
-	const nodes: Node[] = [
-		{ id: "gateway", type: "gateway", data: { label: "Gateway" }, position: { x: 20, y: 10 } },
-		{ id: "external", type: "external", data: { label: "External Modules" }, position: { x: 260, y: 0 } },
-		{ id: "logic1", type: "logic", data: { label: "Logic Block A" }, position: { x: 20, y: 140 } },
-		{ id: "logic2", type: "logic", data: { label: "Logic Block B" }, position: { x: 220, y: 140 } },
-		{ id: "db", type: "db", data: { label: "Database" }, position: { x: 420, y: 120 } },
-		{ id: "queue", type: "queue", data: { label: "Queue" }, position: { x: 220, y: 300 } },
+	// layout helpers
+	// Increase base sizes and gaps a bit
+	const CELL_W = 200;
+	const CELL_H = 76;
+	const GAP_X = 26;
+	const GAP_Y = 36;
+
+	// group headers
+	const GROUP_HEADER_H = 36;
+	const ENGINE_HEADER_H = 36;
+	// uniform inner content padding and top gap
+	const CONTENT_PADDING = 12;
+	const CONTENT_GAP_Y = 12;
+	// gap between bottom group containers
+	const BOTTOM_GROUP_GAP_X = 24;
+
+	function placeRow(ids: string[], y: number, xStart = 0): { id: string; x: number; y: number }[] {
+		return ids.map((id, i) => ({ id, x: xStart + i * (CELL_W + GAP_X), y }));
+	}
+
+	// compute container width/height from inner rows (accounts for header offsets in y)
+	function sizeFromRows(rows: { id: string; x: number; y: number }[]): { w: number; h: number } {
+		const maxX = rows.reduce((m, r) => Math.max(m, r.x), 0);
+		const maxY = rows.reduce((m, r) => Math.max(m, r.y), 0);
+		return {
+			w: maxX + CELL_W + CONTENT_PADDING,
+			h: maxY + CELL_H + CONTENT_PADDING + 50,
+		};
+	}
+
+	// Top: NFs (7)
+	const nfs = [
+		{ id: "nrf", name: "NRF", ip: "10.20.30.31:8100" },
+		{ id: "amf", name: "AMF", ip: "10.20.30.31:8101" },
+		{ id: "smf", name: "SMF", ip: "10.20.30.31:8102" },
+		{ id: "nef", name: "NEF", ip: "10.20.30.31:8103" },
+		{ id: "ims", name: "IMS", ip: "10.20.30.31:8104" },
+		{ id: "nwdaf", name: "NWDAF", ip: "10.20.30.31:8105" },
+		{ id: "chf", name: "CHF", ip: "10.20.30.31:8105" },
+	];
+	const nfRows = placeRow(nfs.map((x) => x.id), 0);
+	// NEW: compute NF row content width for centering
+	const nfContentWidth = nfRows.length * CELL_W + (nfRows.length - 1) * GAP_X;
+
+	// Gateway group (single row), tight container sizing
+	const gatewayId = "grp-gateway";
+	const gatewayApis = [
+		{ id: "api-sm", title: "npcf-sm-policycontrol" },
+		{ id: "api-am", title: "npcf-am-policycontrol" },
+		{ id: "api-ue", title: "npcf-ue-policycontrol" },
+		{ id: "api-authz", title: "npcf-policy-authorization" },
+		{ id: "api-event", title: "npcf-event-exposure", tone: "warn" as const, kpis: [{ label: "Load", value: "400 TPS" }, { label: "Latency", value: "8.62 ms" }, { label: "Success", value: "50%" }] },
+		{ id: "api-pdtq", title: "npcf-pdtq-policycontrol" },
+		{ id: "api-bdt", title: "npcf-bdt-policycontrol" },
+		{ id: "api-mbs", title: "npcf-mbs-policycontrol" },
+		{ id: "api-sl", title: "nchf-spending-limit", tone: "error" as const, kpis: [{ label: "Load", value: "1,800 TPS" }, { label: "Latency", value: "8.62 ms" }, { label: "Success", value: "50%" }] },
+		{ id: "api-analytics", title: "nwdaf-analytics-info", tone: "warn" as const, kpis: [{ label: "Load", value: "400 TPS" }, { label: "Latency", value: "3.62 ms" }, { label: "Success", value: "50%" }] },
+	];
+	// Position gateway container under NFs with extra spacing
+	const gatewayTopLeft = { x: 0, y: CELL_H + GAP_Y + 24 };
+
+	// Arrange APIs in a single horizontal row
+	const gatewayCols = gatewayApis.length;
+	const gatewayRows: { id: string; x: number; y: number }[] = [];
+	for (let i = 0; i < gatewayApis.length; i++) {
+		const col = i % gatewayCols;
+		const row = Math.floor(i / gatewayCols);
+		gatewayRows.push({
+			id: gatewayApis[i].id,
+			x: CONTENT_PADDING + col * (CELL_W + GAP_X),
+			y: GROUP_HEADER_H + CONTENT_GAP_Y + row * (CELL_H + GAP_Y),
+		});
+	}
+	// REPLACED: compute container size from rows to ensure full wrap
+	const gatewaySize = sizeFromRows(gatewayRows);
+
+	// Policy Control Engine (already tight), single row
+	const engineId = "grp-engine";
+	const engineTopLeft = { x: 0, y: gatewayTopLeft.y + gatewaySize.h + GAP_Y };
+	const controllers = [
+		{ id: "ctl-rating", title: "Rating Controller" },
+		{ id: "ctl-session", title: "Session Policy Controller" },
+		{ id: "ctl-ue", title: "UE Policy Controller" },
+		{ id: "ctl-config", title: "Configuration Controller" },
+		{ id: "ctl-etc", title: "…" },
+	];
+	const engineCoreId = "engine-core";
+	const engineRow = [{ id: engineCoreId, title: "Engine Core", isCore: true } as const, ...controllers.map(c => ({ id: c.id, title: c.title, isCore: false as const }))];
+	const engineRowPositions = engineRow.map((item, i) => ({
+		id: item.id,
+		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
+		y: ENGINE_HEADER_H + CONTENT_GAP_Y,
+	}));
+	const engineContentWidth = engineRow.length * CELL_W + (engineRow.length - 1) * GAP_X;
+	const engineSize = {
+		w: CONTENT_PADDING * 2 + engineContentWidth,
+		h: ENGINE_HEADER_H + CONTENT_GAP_Y + CELL_H + CONTENT_PADDING,
+	};
+
+	// Bottom groups — compute tight sizes and positions like Gateway/Engine
+	const registryItems = [
+		{ id: "reg-cache", title: "AWS ElasticCache" },
+		{ id: "reg-codec", title: "Codec" },
+		{ id: "reg-storage", title: "Storage" },
+	];
+	const subsItems = [
+		{ id: "sub-abm", title: "vOCS ABM 10.52.3.59" },
+		{ id: "sub-udr", title: "UDR" },
+		{ id: "sub-custom", title: "Custom" },
+	];
+	const intelItems = [
+		{ id: "intel-mcp", title: "MCP Server" },
+		{ id: "intel-agent", title: "AI Agent" },
 	];
 
-	const edges: Edge[] = [
-		{ id: "e1", source: "gateway", target: "logic1", animated: true },
-		{ id: "e2", source: "gateway", target: "logic2", animated: true },
-		{ id: "e3", source: "logic1", target: "queue" },
-		{ id: "e4", source: "logic2", target: "db" },
-		{ id: "e5", source: "external", target: "logic2" },
-		{ id: "e6", source: "queue", target: "db" },
+	const registryRows = registryItems.map((_, i) => ({
+		id: registryItems[i].id,
+		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
+		y: GROUP_HEADER_H + CONTENT_GAP_Y,
+	}));
+	const subsRows = subsItems.map((_, i) => ({
+		id: subsItems[i].id,
+		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
+		y: GROUP_HEADER_H + CONTENT_GAP_Y,
+	}));
+	const intelRows = intelItems.map((_, i) => ({
+		id: intelItems[i].id,
+		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
+		y: GROUP_HEADER_H + CONTENT_GAP_Y,
+	}));
+
+	// REPLACED: dynamic sizes from rows so containers always wrap children
+	const registrySize = sizeFromRows(registryRows);
+	const subsSize = sizeFromRows(subsRows);
+	const intelSize = sizeFromRows(intelRows);
+
+	// canvas width picks widest of top rows
+	const totalWidth = Math.max(
+		nfContentWidth,          // was: nfRows.length * (CELL_W + GAP_X) - GAP_X
+		gatewaySize.w,
+		engineSize.w
+	);
+	const X_OFFSET = 20;
+
+	// NEW: baseX offsets to center each block horizontally
+	const nfBaseX = X_OFFSET + Math.max(0, (totalWidth - nfContentWidth) / 2);
+	const gatewayX = X_OFFSET + Math.max(0, (totalWidth - gatewaySize.w) / 2);
+	const engineX = X_OFFSET + Math.max(0, (totalWidth - engineSize.w) / 2);
+
+	// horizontally center 3 bottom groups with even gaps
+	const bottomY = engineTopLeft.y + engineSize.h + GAP_Y;
+	const groupsTotalWidth = registrySize.w + subsSize.w + intelSize.w + 2 * BOTTOM_GROUP_GAP_X;
+	const bottomBaseX = X_OFFSET + Math.max(0, (totalWidth - groupsTotalWidth) / 2);
+
+	const registryPos = { x: bottomBaseX, y: bottomY };
+	const subsPos = { x: bottomBaseX + registrySize.w + BOTTOM_GROUP_GAP_X, y: bottomY };
+	const intelPos = { x: bottomBaseX + registrySize.w + BOTTOM_GROUP_GAP_X + subsSize.w + BOTTOM_GROUP_GAP_X, y: bottomY };
+
+	const nodes: Node[] = [
+		// Top NFs — centered using nfBaseX
+		...nfRows.map((pos, i) => ({
+			id: nfs[i].id,
+			type: "default",
+			position: { x: nfBaseX + pos.x, y: pos.y }, // was: X_OFFSET + pos.x
+			data: { label: <BoxLabel title={nfs[i].name} subtitle={nfs[i].ip} /> },
+			draggable: false,
+			selectable: false,
+			style: { width: CELL_W },
+		})),
+
+		// Gateway container — centered using gatewayX
+		{
+			id: gatewayId,
+			type: "default",
+			position: { x: gatewayX, y: gatewayTopLeft.y }, // was: X_OFFSET + 0
+			data: { label: <GroupLabel title="Gateway" /> },
+			style: { width: gatewaySize.w, height: gatewaySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			selectable: false,
+		},
+		{
+			id: "ing-gateway",
+			type: "default",
+			parentNode: gatewayId,
+			extent: "parent",
+			position: { x: gatewaySize.w / 2 - 4, y: GROUP_HEADER_H / 2 },
+			data: { label: null },
+			style: { width: 8, height: 8, background: "transparent", border: "none", opacity: 0, pointerEvents: "none" as React.CSSProperties['pointerEvents'] },
+			selectable: false,
+			draggable: false,
+		},
+		...gatewayRows.map((pos, i) => ({
+			id: gatewayApis[i].id,
+			type: "default",
+			parentNode: gatewayId,
+			extent: "parent",
+			position: { x: pos.x, y: pos.y },
+			data: { label: <BoxLabel title={gatewayApis[i].title} tone={gatewayApis[i].tone} kpis={gatewayApis[i].kpis ?? [{ label: "Load", value: "400 TPS" }, { label: "Latency", value: "3.62 ms" }, { label: "Success", value: "100%" }]} /> },
+			style: { width: CELL_W },
+			selectable: false,
+			draggable: false,
+		})),
+
+		// Policy Control Engine — centered using engineX
+		{
+			id: engineId,
+			type: "default",
+			position: { x: engineX, y: engineTopLeft.y }, // was: X_OFFSET + 0
+			data: { label: <GroupLabel title="Policy Control Engine" /> },
+			style: { width: engineSize.w, height: engineSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			selectable: false,
+		},
+		{
+			id: "ing-engine",
+			type: "default",
+			parentNode: engineId,
+			extent: "parent",
+			position: { x: engineSize.w / 2 - 4, y: ENGINE_HEADER_H / 2 },
+			data: { label: null },
+			style: { width: 8, height: 8, background: "transparent", border: "none", opacity: 0, pointerEvents: "none" as React.CSSProperties['pointerEvents'] },
+			selectable: false,
+			draggable: false,
+		},
+		...engineRowPositions.map((pos, idx) => ({
+			id: engineRow[idx].id,
+			type: "default",
+			parentNode: engineId,
+			extent: "parent",
+			position: { x: pos.x, y: pos.y },
+			data: { label: <BoxLabel title={engineRow[idx].title} /> },
+			style: { width: CELL_W },
+			selectable: false,
+			draggable: false,
+		})),
+
+		// Bottom groups — containers (tight) and items with inner offsets
+		{
+			id: "grp-registry",
+			type: "default",
+			position: registryPos,
+			data: { label: <GroupLabel title="Policy Registry" /> },
+			style: { width: registrySize.w, height: registrySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			selectable: false,
+		},
+		{
+			id: "grp-subs",
+			type: "default",
+			position: subsPos,
+			data: { label: <GroupLabel title="Subscription Manager" /> },
+			style: { width: subsSize.w, height: subsSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			selectable: false,
+		},
+		{
+			id: "grp-intel",
+			type: "default",
+			position: intelPos,
+			data: { label: <GroupLabel title="Intelligence & Analytics" /> },
+			style: { width: intelSize.w, height: intelSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			selectable: false,
+		},
+
+		// Bottom group items
+		...registryRows.map((pos, i) => ({
+			id: registryItems[i].id,
+			type: "default",
+			parentNode: "grp-registry",
+			extent: "parent",
+			position: { x: pos.x, y: pos.y },
+			data: { label: <BoxLabel title={registryItems[i].title} /> },
+			style: { width: CELL_W },
+			selectable: false,
+			draggable: false,
+		})),
+		...subsRows.map((pos, i) => ({
+			id: subsItems[i].id,
+			type: "default",
+			parentNode: "grp-subs",
+			extent: "parent",
+			position: { x: pos.x, y: pos.y },
+			data: { label: <BoxLabel title={subsItems[i].title} /> },
+			style: { width: CELL_W },
+			selectable: false,
+			draggable: false,
+		})),
+		...intelRows.map((pos, i) => ({
+			id: intelItems[i].id,
+			type: "default",
+			parentNode: "grp-intel",
+			extent: "parent",
+			position: { x: pos.x, y: pos.y },
+			data: { label: <BoxLabel title={intelItems[i].title} /> },
+			style: { width: CELL_W },
+			selectable: false,
+			draggable: false,
+		})),
 	];
+
+	// Empty edges for now
+	const edges: Edge[] = [];
 
 	return (
-		<div style={{ width: "100%", height: "100%", minHeight: 420 }}>
-			<ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView>
-				<MiniMap zoomable pannable />
+		<div style={{ width: "100%", height: "100%" }}>
+			<ReactFlow
+				nodes={nodes}
+				edges={edges}
+				fitView
+				fitViewOptions={{ padding: 0.25 }}
+				proOptions={{ hideAttribution: true }}
+				nodesDraggable={false}
+				nodesConnectable={false}
+				elementsSelectable={false}
+				panOnScroll
+				panOnDrag
+				zoomOnScroll
+			>
+				<Background gap={24} size={1} color="#e5e7eb" />
+				<MiniMap pannable />
 				<Controls />
-				<Background gap={16} />
 			</ReactFlow>
 		</div>
 	);
