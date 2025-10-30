@@ -4,6 +4,7 @@ import { Descriptions, Form, Input, Button, Card, Tabs as AntTabs, Collapse, Spa
 import { PlatformConfig } from "../../components/platforms/PlatformConfig";
 import FeatureAccordion, { type FeaturesConfig } from "../../components/features/FeatureAccordion";
 import ExportImportControls from "../../components/ExportImportControls";
+import DeploymentGraph from "../../components/deployment/DeploymentGraph";
 
 const { Panel } = Collapse;
 
@@ -35,6 +36,14 @@ export default function DeploymentDetail() {
 		sessionManagement: {},
 		nonSessionManagement: {},
 	} as unknown as FeaturesConfig);
+	// deployment configuration state + edit mode
+	const [editingDeployment, setEditingDeployment] = useState(false);
+	const [deploymentCfg, setDeploymentCfg] = useState<Record<string, string>>({
+		replicas: "3",
+		strategy: "Rolling",
+		cpu: "500m",
+		memory: "512Mi",
+	});
 
 	// file input ref for Import
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -135,6 +144,17 @@ export default function DeploymentDetail() {
 		setEditingFeatures(false);
 	}
 
+	function saveDeployment() {
+		// demo: apply locally (replace with API call in real app)
+		setEditingDeployment(false);
+	}
+
+	function cancelDeployment() {
+		// reset to last saved (in real app reload from source)
+		setDeploymentCfg((d) => ({ ...d }));
+		setEditingDeployment(false);
+	}
+
 	const tabs = [
 		{
 			id: "metadata" as const,
@@ -180,44 +200,6 @@ export default function DeploymentDetail() {
 			),
 		},
 		{
-			id: "platform" as const,
-			title: "Platform Configuration",
-			content: (
-				<Card>
-					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-						{/* Export / Import + Edit controls for Platform (reusable) */}
-						<ExportImportControls
-							data={platformCfg}
-							onImport={(d) => {
-								// basic assignment; validate in real app
-								setPlatformCfg(d as Record<string, string>);
-							}}
-							filenamePrefix={`${details?.name ?? "deployment"}-platform`}
-							className="mr-4"
-						/>
-
-						{editingPlatform ? (
-							<Space>
-								<Button onClick={cancelPlatform}>Cancel</Button>
-								<Button type="primary" onClick={() => metaForm.validateFields().then(() => {})}>Save</Button>
-							</Space>
-						) : (
-							<Button onClick={() => setEditingPlatform(true)}>Edit</Button>
-						)}
-					</div>
-
-					<PlatformConfig
-						platform={details.platform}
-						initial={platformCfg}
-						mode={editingPlatform ? "edit" : "view"}
-						onChange={(cfg) => setPlatformCfg(cfg)}
-						onSave={savePlatform}
-						onCancel={cancelPlatform}
-					/>
-				</Card>
-			),
-		},
-		{
 			id: "features" as const,
 			title: "Features Configuration",
 			content: (
@@ -248,6 +230,91 @@ export default function DeploymentDetail() {
 						initial={featureConfig}
 						onChange={(next) => setFeatureConfig(next as FeaturesConfig)}
 					/>
+				</Card>
+			),
+		},
+		{
+			id: "deployment-config" as const,
+			title: "Deployment Configuration",
+			content: (
+				<Card>
+					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+						{/* Export/Import controls (demo) for deployment config */}
+						<ExportImportControls
+							data={deploymentCfg}
+							onImport={(d) => setDeploymentCfg(d as Record<string, string>)}
+							filenamePrefix={`${details?.name ?? "deployment"}-deployment-config`}
+							className="mr-4"
+						/>
+
+						{editingDeployment ? (
+							<Space>
+								<Button onClick={cancelDeployment}>Cancel</Button>
+								<Button type="primary" onClick={saveDeployment}>Save</Button>
+							</Space>
+						) : (
+							<Button onClick={() => setEditingDeployment(true)}>Edit</Button>
+						)}
+					</div>
+
+					{/* Top-level panels: Overview, Platform Configuration, Application Configuration */}
+					<Collapse defaultActiveKey={["overview"]}>
+						<Panel
+							key="overview"
+							header={<div className="uppercase font-extrabold text-sm">Overview</div>}
+						>
+							<div style={{ height: 440, borderRadius: 6, overflow: "hidden", background: "var(--ant-bg-container)" }}>
+								{/* Placeholder network/system graph */}
+								<DeploymentGraph />
+							</div>
+						</Panel>
+
+						{/* NEW: Platform Configuration panel moved here */}
+						<Panel
+							key="platform-configuration"
+							header={<div className="uppercase font-extrabold text-sm">Platform Configuration</div>}
+						>
+							{/* PlatformConfig only — remove duplicate Export/Import/Edit controls here */}
+							<PlatformConfig
+								platform={details.platform}
+								initial={platformCfg}
+								mode={editingPlatform ? "edit" : "view"}
+								onChange={(cfg) => setPlatformCfg(cfg)}
+								onSave={savePlatform}
+								onCancel={cancelPlatform}
+							/>
+						</Panel>
+						
+						{/* renamed: Application Configuration (was "Configuration") */}
+						<Panel
+							key="application-configuration"
+							header={<div className="uppercase font-extrabold text-sm">Application Configuration</div>}
+						>
+							{editingDeployment ? (
+								<Form layout="vertical" initialValues={deploymentCfg} onValuesChange={(_, all) => setDeploymentCfg(all)}>
+									<Form.Item name="replicas" label="Replicas">
+										<Input />
+									</Form.Item>
+									<Form.Item name="strategy" label="Strategy">
+										<Input />
+									</Form.Item>
+									<Form.Item name="cpu" label="CPU">
+										<Input />
+									</Form.Item>
+									<Form.Item name="memory" label="Memory">
+										<Input />
+									</Form.Item>
+								</Form>
+							) : (
+								<Descriptions column={2} bordered>
+									<Descriptions.Item label="Replicas">{deploymentCfg.replicas}</Descriptions.Item>
+									<Descriptions.Item label="Strategy">{deploymentCfg.strategy}</Descriptions.Item>
+									<Descriptions.Item label="CPU">{deploymentCfg.cpu}</Descriptions.Item>
+									<Descriptions.Item label="Memory">{deploymentCfg.memory}</Descriptions.Item>
+								</Descriptions>
+							)}
+						</Panel>
+					</Collapse>
 				</Card>
 			),
 		},
