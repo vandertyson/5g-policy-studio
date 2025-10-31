@@ -1,14 +1,38 @@
 import React from "react";
 import ReactFlow, {
 	Background,
+	BackgroundVariant,
 	Controls,
 	MiniMap,
 	Position,
-	Handle,
-	BackgroundVariant
+	Handle
 } from "reactflow";
 import type { Edge, Node } from "reactflow";
 import 'reactflow/dist/style.css';
+
+// Small gold star icon
+function StarIcon({ size = 12 }: { size?: number }) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+				fill="#F59E0B"
+				stroke="#D97706"
+				strokeWidth="0.5"
+			/>
+		</svg>
+	);
+}
+
+// NEW: small green check icon for doc items
+function CheckIcon({ size = 14 }: { size?: number }) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+			<circle cx="12" cy="12" r="10" fill="#10B981" />
+			<path d="M8.5 12.5l2.5 2.5 4.5-5.5" stroke="#FFFFFF" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+		</svg>
+	);
+}
 
 // lightweight box label
 function BoxLabel({
@@ -17,7 +41,6 @@ function BoxLabel({
 	kpis,
 	tone = "default",
 	fixedHeight,
-	// NEW: optional icon after title
 	titleSuffix,
 }: {
 	title: string;
@@ -46,10 +69,11 @@ function BoxLabel({
 		<div
 			style={{
 				position: "relative",
+				// ...existing style...
 				border: `1px solid ${c.border}`,
 				background: c.surface,
 				borderRadius: 10,
-				padding: "12px 14px 18px 16px",
+				padding: "12px 14px 20px 16px",
 				height: fixedHeight ?? "auto",
 				boxSizing: "border-box",
 				display: "flex",
@@ -115,20 +139,6 @@ function GroupLabel({ title, suffix }: { title: string; suffix?: React.ReactNode
 			{title}
 			{suffix ? <span style={{ display: "inline-flex", marginLeft: 6 }}>{suffix}</span> : null}
 		</div>
-	);
-}
-
-// Small gold star icon
-function StarIcon({ size = 12 }: { size?: number }) {
-	return (
-		<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
-				fill="#F59E0B"
-				stroke="#D97706"
-				strokeWidth="0.5"
-			/>
-		</svg>
 	);
 }
 
@@ -613,6 +623,84 @@ export default function DeploymentGraph() {
 	// Register node types
 	const nodeTypes = { box: BoxNode, group: GroupNode };
 
+	// NEW: context menu state shaped for popup_info design
+	const [ctx, setCtx] = React.useState<{
+		x: number;
+		y: number;
+		title: string;
+		group: string;
+		release: string;
+		featured?: boolean;
+		seeMore?: { label: string; href?: string }[];
+		docs?: { label: string; href?: string }[];
+	} | null>(null);
+
+	const closeMenu = React.useCallback(() => setCtx(null), []);
+	React.useEffect(() => {
+		if (!ctx) return;
+		const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeMenu();
+		const onDown = () => closeMenu();
+		document.addEventListener("keydown", onKey);
+		document.addEventListener("mousedown", onDown, true);
+		return () => {
+			document.removeEventListener("keydown", onKey);
+			document.removeEventListener("mousedown", onDown, true);
+		};
+	}, [ctx, closeMenu]);
+
+	// helpers to derive popup content
+	const groupTitleMap: Record<string, string> = {
+		"grp-nfs": "External NFs",
+		"grp-gateway": "Gateway",
+		"grp-engine": "Policy Control Engine",
+		"grp-registry": "Policy Registry",
+		"grp-subs": "Subscription Manager",
+		"grp-intel": "Intelligence & Analytics",
+	};
+
+	function buildMenu(node: any) {
+		const labelEl = node?.data?.label;
+		const props: any = React.isValidElement(labelEl) ? (labelEl as any).props : {};
+		const title: string = props.title ?? node?.id ?? "Module";
+		const parent: string = node?.parentNode ?? "";
+		const group = groupTitleMap[parent] ?? "Module";
+		const featured = !!props.titleSuffix;
+		// simple per-id demo content (adjust or extend as needed)
+		const isCatalog = node?.id === "reg-codec";
+		const isAnalytics = node?.id === "api-analytics";
+		const release = "4.5.2";
+		const seeMore = [
+			{ label: "See More", href: "#" },
+			{ label: "See More", href: "#" },
+		];
+		const docs = isCatalog
+			? [
+					{ label: "vOCS Product Catalog Technical Specification", href: "#" },
+					{ label: "vOCS Product Catalog Configuration Guide", href: "#" },
+					{ label: "Blog: 5 steps for product offer creation", href: "#" },
+			  ]
+			: isAnalytics
+			? [
+					{ label: "NWDAF Analytics Overview", href: "#" },
+					{ label: "NWDAF API Reference", href: "#" },
+					{ label: "Best practices for analytics", href: "#" },
+			  ]
+			: [
+					{ label: `${title} Overview`, href: "#" },
+					{ label: `${title} Configuration Guide`, href: "#" },
+					{ label: "Operational runbook", href: "#" },
+			  ];
+		return { title, group, featured, release, seeMore, docs };
+	}
+
+	// Right-click handler: open menu
+	const onNodeContextMenu = React.useCallback((e: React.MouseEvent, node: any) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const m = buildMenu(node);
+		setCtx({ x: e.clientX, y: e.clientY, ...m });
+	}, []);
+
 	return (
 		<div style={{ width: "100%", height: "100%", position: "relative" }}>
 			<ReactFlow
@@ -628,18 +716,140 @@ export default function DeploymentGraph() {
 				panOnScroll
 				panOnDrag
 				zoomOnScroll
-			>
-				{/* subtle dotted grid */}
+				onNodeContextMenu={onNodeContextMenu}
+				onPaneClick={closeMenu}
+				onPaneContextMenu={(e) => e.preventDefault()}>
 				<Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#E2E8F0" />
-				{/* calmer minimap colors */}
-				<MiniMap
-					nodeColor={() => "#CBD5E1"}
-					nodeStrokeColor="#94A3B8"
-					maskColor="rgba(15, 23, 42, 0.04)"
-					pannable
-				/>
+				<MiniMap nodeColor={() => "#CBD5E1"} nodeStrokeColor="#94A3B8" maskColor="rgba(15, 23, 42, 0.04)" pannable />
 				<Controls />
 			</ReactFlow>
+
+			{/* NEW: popup_info styled context menu */}
+			{ctx ? (
+				<div
+					style={{
+						position: "fixed",
+						left: ctx.x,
+						top: ctx.y,
+						transform: "translate(8px, 8px)",
+						zIndex: 10000,
+						background: "#FFFFFF",
+						color: "#0F172A",
+						border: "1px solid #E5E7EB",
+						borderRadius: 12,
+						boxShadow: "0 12px 28px rgba(2,6,23,0.18), 0 4px 10px rgba(2,6,23,0.08)",
+						width: 540,
+						maxWidth: "90vw",
+						padding: 16,
+					}}
+					onClick={(e) => e.stopPropagation()}
+				>
+					{/* star at top-right when featured */}
+					{ctx.featured ? (
+						<div style={{ position: "absolute", right: 16, top: 12 }}>
+							<StarIcon size={22} />
+						</div>
+					) : null}
+
+					{/* header chips */}
+					<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+						<span
+							style={{
+								display: "inline-flex",
+								alignItems: "center",
+								padding: "6px 10px",
+								borderRadius: 999,
+								background: "#10B981",
+								color: "#fff",
+								fontSize: 12,
+								fontWeight: 800,
+								letterSpacing: 0.3,
+							}}
+						>
+							{ctx.group}
+						</span>
+						<span
+							style={{
+								display: "inline-flex",
+								alignItems: "center",
+								padding: "6px 10px",
+								borderRadius: 999,
+								background: "#6B7280",
+								color: "#fff",
+								fontSize: 12,
+								fontWeight: 700,
+							}}
+						>
+							Release {ctx.release}
+						</span>
+					</div>
+
+					{/* title */}
+					<div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>{ctx.title}</div>
+
+					{/* two teaser rows with See More on the right */}
+					<div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8, marginBottom: 8 }}>
+						<div style={{ color: "#475569", fontSize: 13 }}>Overview and quick highlights of the module.</div>
+						<a href={ctx.seeMore?.[0]?.href ?? "#"} style={{ color: "#2563EB", fontWeight: 700, fontSize: 12, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, padding: "4px 8px", textDecoration: "none" }}>
+							{ctx.seeMore?.[0]?.label ?? "See More"}
+						</a>
+					</div>
+					<div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8, marginBottom: 14 }}>
+						<div style={{ color: "#475569", fontSize: 13 }}>Configuration and integration details.</div>
+						<a href={ctx.seeMore?.[1]?.href ?? "#"} style={{ color: "#2563EB", fontWeight: 700, fontSize: 12, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, padding: "4px 8px", textDecoration: "none" }}>
+							{ctx.seeMore?.[1]?.label ?? "See More"}
+						</a>
+					</div>
+
+					{/* docs list */}
+					<div style={{ display: "grid", gap: 10, marginTop: 6 }}>
+						{(ctx.docs ?? []).map((d) => (
+							<a key={d.label} href={d.href ?? "#"} style={{ display: "flex", alignItems: "center", gap: 10, color: "#2563EB", textDecoration: "none", fontWeight: 600 }}>
+								<CheckIcon />
+								<span>{d.label}</span>
+							</a>
+						))}
+					</div>
+
+					{/* footer */}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+						<button
+							type="button"
+							onClick={closeMenu}
+							style={{
+								minWidth: 110,
+								height: 36,
+								borderRadius: 8,
+								border: "1px solid #CBD5E1",
+								background: "#E5E7EB",
+								color: "#111827",
+								fontWeight: 600,
+								fontSize: 14,
+								cursor: "pointer",
+							}}
+						>
+							Close
+						</button>
+						<button
+							type="button"
+							onClick={closeMenu}
+							style={{
+								minWidth: 120,
+								height: 36,
+								borderRadius: 8,
+								border: "1px solid #3B82F6",
+								background: "#3B82F6",
+								color: "#FFFFFF",
+								fontWeight: 700,
+								fontSize: 14,
+								cursor: "pointer",
+							}}
+						>
+							Configure
+						</button>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }
