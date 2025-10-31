@@ -5,6 +5,7 @@ import { PlatformConfig } from "../../components/platforms/PlatformConfig";
 import FeatureAccordion, { type FeaturesConfig } from "../../components/features/FeatureAccordion";
 import ExportImportControls from "../../components/ExportImportControls";
 import DeploymentGraph from "../../components/deployment/DeploymentGraph";
+import { CloudOutlined, ClusterOutlined, DeploymentUnitOutlined } from "@ant-design/icons";
 
 const { Panel } = Collapse;
 
@@ -155,6 +156,42 @@ export default function DeploymentDetail() {
 		setEditingDeployment(false);
 	}
 
+	// Small badge for platform label
+	const PlatformBadge = ({ platform }: { platform: string }) => {
+		const lower = (platform ?? "").toLowerCase();
+		const cfg =
+			lower === "kubernetes"
+				? { Icon: ClusterOutlined, bg: "#EEF2FF", bd: "#A5B4FC", fg: "#3730A3", text: "Kubernetes" }
+				: lower === "mano"
+				? { Icon: DeploymentUnitOutlined, bg: "#ECFDF5", bd: "#86EFAC", fg: "#065F46", text: "MANO" }
+				: lower === "aws"
+				? { Icon: CloudOutlined, bg: "#EFF6FF", bd: "#93C5FD", fg: "#1E40AF", text: "AWS" }
+				: { Icon: CloudOutlined, bg: "#F1F5F9", bd: "#CBD5E1", fg: "#0F172A", text: platform || "Unknown" };
+		const { Icon, bg, bd, fg, text } = cfg;
+		return (
+			<div
+				style={{
+					display: "inline-flex",
+					alignItems: "center",
+					gap: 10,
+					padding: "10px 14px",
+					borderRadius: 999,
+					background: bg,
+					border: `1px solid ${bd}`,
+					color: fg,
+					fontWeight: 800,
+					fontSize: 14,
+					letterSpacing: 0.3,
+					textTransform: "uppercase",
+				}}
+				title={`Platform: ${text}`}
+			>
+				<Icon style={{ fontSize: 18, color: fg }} />
+				<span>{text}</span>
+			</div>
+		);
+	};
+
 	const tabs = [
 		{
 			id: "metadata" as const,
@@ -204,27 +241,29 @@ export default function DeploymentDetail() {
 			title: "Features Configuration",
 			content: (
 				<Card>
-					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-						{/* Export / Import + Edit controls for Features (reusable) */}
-						<ExportImportControls
-							data={featureConfig}
-							onImport={(d) => {
-								setFeatureConfig(d as FeaturesConfig);
-							}}
-							filenamePrefix={`${details?.name ?? "deployment"}-features`}
-							className="mr-4"
-						/>
-
-						{editingFeatures ? (
-							<Space>
-								<Button onClick={cancelFeatures}>Cancel</Button>
-								<Button type="primary" onClick={saveFeatures}>Save</Button>
-							</Space>
-						) : (
-							<Button onClick={() => setEditingFeatures(true)}>Edit</Button>
-						)}
+					{/* row: platform badge (left) + export/import/edit (right) */}
+					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+						<PlatformBadge platform={details.platform} />
+						<div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+							<span style={{ display: "inline-flex" }}>
+								<ExportImportControls
+									data={featureConfig}
+									onImport={(d) => {
+										setFeatureConfig(d as FeaturesConfig);
+									}}
+									filenamePrefix={`${details?.name ?? "deployment"}-features`}
+								/>
+							</span>
+							{editingFeatures ? (
+								<Space size={8} wrap={false}>
+									<Button onClick={cancelFeatures}>Cancel</Button>
+									<Button type="primary" onClick={saveFeatures}>Save</Button>
+								</Space>
+							) : (
+								<Button onClick={() => setEditingFeatures(true)}>Edit</Button>
+							)}
+						</div>
 					</div>
-
 					<FeatureAccordion
 						mode={editingFeatures ? "edit" : "view"}
 						initial={featureConfig}
@@ -238,33 +277,35 @@ export default function DeploymentDetail() {
 			title: "Deployment Configuration",
 			content: (
 				<Card>
-					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-						{/* Export/Import controls (demo) for deployment config */}
-						<ExportImportControls
-							data={deploymentCfg}
-							onImport={(d) => setDeploymentCfg(d as Record<string, string>)}
-							filenamePrefix={`${details?.name ?? "deployment"}-deployment-config`}
-							className="mr-4"
-						/>
-
-						{editingDeployment ? (
-							<Space>
-								<Button onClick={cancelDeployment}>Cancel</Button>
-								<Button type="primary" onClick={saveDeployment}>Save</Button>
-							</Space>
-						) : (
-							<Button onClick={() => setEditingDeployment(true)}>Edit</Button>
-						)}
+					{/* row: platform badge (left) + export/import/edit (right) */}
+					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+						<PlatformBadge platform={details.platform} />
+						<div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+							<span style={{ display: "inline-flex" }}>
+								<ExportImportControls
+									data={deploymentCfg}
+									onImport={(d) => setDeploymentCfg(d as Record<string, string>)}
+									filenamePrefix={`${details?.name ?? "deployment"}-deployment-config`}
+								/>
+							</span>
+							{editingDeployment ? (
+								<Space size={8} wrap={false}>
+									<Button onClick={cancelDeployment}>Cancel</Button>
+									<Button type="primary" onClick={saveDeployment}>Save</Button>
+								</Space>
+							) : (
+								<Button onClick={() => setEditingDeployment(true)}>Edit</Button>
+							)}
+						</div>
 					</div>
-
 					{/* Top-level panels: Overview, Platform Configuration, Application Configuration */}
 					<Collapse defaultActiveKey={["overview"]}>
 						<Panel
 							key="overview"
 							header={<div className="uppercase font-extrabold text-sm">Overview</div>}
 						>
-							<div style={{ height: 440, borderRadius: 6, overflow: "hidden", background: "var(--ant-bg-container)" }}>
-								{/* Placeholder network/system graph */}
+							<div style={{ height: 600, borderRadius: 6, overflow: "hidden", background: "var(--ant-bg-container)" }}>
+								{/* Overview graph without System Config overlay */}
 								<DeploymentGraph />
 							</div>
 						</Panel>
