@@ -4,7 +4,8 @@ import ReactFlow, {
 	Controls,
 	MiniMap,
 	Position,
-	Handle
+	Handle,
+	BackgroundVariant
 } from "reactflow";
 import type { Edge, Node } from "reactflow";
 import 'reactflow/dist/style.css';
@@ -16,60 +17,118 @@ function BoxLabel({
 	kpis,
 	tone = "default",
 	fixedHeight,
+	// NEW: optional icon after title
+	titleSuffix,
 }: {
 	title: string;
 	subtitle?: string;
 	kpis?: { label: string; value: string }[];
-	tone?: "default" | "warn" | "error" | "inactive";
+	tone?: "default" | "warn" | "error" | "inactive" | "blue";
 	fixedHeight?: number;
+	titleSuffix?: React.ReactNode;
 }) {
-	// CHANGED: add gray scheme for inactive
-	const bg =
-		tone === "error" ? "#FEF2F2" :
-		tone === "warn" ? "#FFFBEB" :
-		tone === "inactive" ? "#F3F4F6" : // gray-100
-		"#F0FDF4"; // default green
-	const border =
-		tone === "error" ? "#FCA5A5" :
-		tone === "warn" ? "#FCD34D" :
-		tone === "inactive" ? "#D1D5DB" : // gray-300
-		"#86EFAC";
+	// CHANGED: tinted surfaces so modules stand out against white group containers
+	const accents: Record<string, { accent: string; border: string; surface: string }> = {
+		// emerald (active/default)
+		default: { accent: "#10B981", border: "#A7F3D0", surface: "#ECFDF5" },  // green-200 border, green-50 surface
+		// amber (warnings)
+		warn:    { accent: "#F59E0B", border: "#FDE68A", surface: "#FFFBEB" },  // amber-300 border, amber-50 surface
+		// red (errors)
+		error:   { accent: "#EF4444", border: "#FECACA", surface: "#FEF2F2" },  // red-200 border, red-50 surface
+		// gray (inactive)
+		inactive:{ accent: "#9CA3AF", border: "#E5E7EB", surface: "#F3F4F6" },  // gray-200 border, gray-100 surface
+		// blue (active NF)
+		blue:    { accent: "#3B82F6", border: "#BFDBFE", surface: "#EFF6FF" }, // NEW
+	};
+	const c = accents[tone] ?? accents.default;
+
 	return (
 		<div
 			style={{
-				border: `1px solid ${border}`,
-				background: bg,
-				borderRadius: 6,
-				padding: 8,
+				position: "relative",
+				border: `1px solid ${c.border}`,
+				background: c.surface,
+				borderRadius: 10,
+				padding: "12px 14px 18px 16px",
 				height: fixedHeight ?? "auto",
 				boxSizing: "border-box",
 				display: "flex",
 				flexDirection: "column",
 				justifyContent: "flex-start",
+				boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
 			}}
 		>
-			<div style={{ fontSize: 12, fontWeight: 600 }}>{title}</div>
-			{subtitle ? <div style={{ fontSize: 11, color: "#6b7280" }}>{subtitle}</div> : null}
-			{(kpis?.length ?? 0) > 0 ? (
-				<div style={{ marginTop: 4 }}>
-					{kpis!.map((k) => (
-						<div key={k.label} style={{ fontSize: 11, lineHeight: "16px" }}>
-							<span style={{ color: "#6b7280" }}>{k.label}: </span>
-							<span style={{ fontWeight: 600 }}>{k.value}</span>
-						</div>
-					))}
-				</div>
-			) : null}
+			{/* accent bar */}
+			<div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderTopLeftRadius: 10, borderBottomLeftRadius: 10, background: c.accent }} />
+			{/* CHANGED: title row supports a suffix icon */}
+			<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+				<div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{title}</div>
+				{titleSuffix ? <span style={{ lineHeight: 0 }}>{titleSuffix}</span> : null}
+			</div>
+			{/* CHANGED: unified vertical stack for consistent gaps */}
+			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+				{subtitle ? <div style={{ fontSize: 12, color: "#64748B" }}>{subtitle}</div> : null}
+				{(kpis?.length ?? 0) > 0 ? (
+					<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						{kpis!.map((k) => (
+							<div key={k.label} style={{ fontSize: 12, lineHeight: "18px" }}>
+								<span style={{ color: "#64748B" }}>{k.label}: </span>
+								<span style={{ fontWeight: 600, color: "#0F172A" }}>{k.value}</span>
+							</div>
+						))}
+					</div>
+				) : null}
+			</div>
 		</div>
 	);
 }
 
 // group node label
-function GroupLabel({ title }: { title: string }) {
+function GroupLabel({ title, suffix }: { title: string; suffix?: React.ReactNode }) {
 	return (
-		<div style={{ border: "1px solid #c7d2fe", background: "#eff6ff", padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>
+		<div
+			style={{
+				display: "inline-flex",
+				alignItems: "center",
+				gap: 8,
+				border: "1px solid #E5E7EB",
+				background: "#FFFFFF",
+				padding: "6px 12px",
+				borderRadius: 999,
+				fontSize: 11,
+				fontWeight: 800,
+				textTransform: "uppercase",
+				letterSpacing: 0.4,
+				color: "#0F172A",
+				boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+			}}
+		>
+			<span
+				style={{
+					display: "inline-block",
+					width: 6,
+					height: 6,
+					borderRadius: 999,
+					background: "#6366F1",
+				}}
+			/>
 			{title}
+			{suffix ? <span style={{ display: "inline-flex", marginLeft: 6 }}>{suffix}</span> : null}
 		</div>
+	);
+}
+
+// Small gold star icon
+function StarIcon({ size = 12 }: { size?: number }) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+				fill="#F59E0B"
+				stroke="#D97706"
+				strokeWidth="0.5"
+			/>
+		</svg>
 	);
 }
 
@@ -118,13 +177,12 @@ export default function DeploymentGraph() {
 		}));
 	}
 
-	// shared style for child nodes
+	// NEW: refine child node base style (keeps the card doing the visuals)
 	const NODE_CHILD_STYLE: React.CSSProperties = {
 		width: CELL_W,
-		height: CELL_H,
-		background: "#ffffff",
-		borderRadius: 8,
-		padding: 0,
+		border: "none",
+		background: "transparent",
+		boxShadow: "none",
 	};
 
 	// group headers
@@ -143,20 +201,32 @@ export default function DeploymentGraph() {
 		return pad + titleH + subtitleH + extra;
 	}
 
-	// Top: NFs (7) — mark 1–2 inactive (no instances on NFs)
+	// Top: External NFs — keep active/inactive + subtitle(IP), no instances
 	const nfs = [
 		{ id: "nrf", name: "NRF", ip: "10.20.30.31:8100", active: true },
 		{ id: "amf", name: "AMF", ip: "10.20.30.31:8101", active: true },
 		{ id: "smf", name: "SMF", ip: "10.20.30.31:8102", active: true },
 		{ id: "nef", name: "NEF", ip: "10.20.30.31:8103", active: true },
-		{ id: "ims", name: "IMS", ip: "10.20.30.31:8104", active: false },  // inactive example
+		{ id: "ims", name: "IMS", ip: "10.20.30.31:8104", active: false },
 		{ id: "nwdaf", name: "NWDAF", ip: "10.20.30.31:8105", active: true },
-		{ id: "chf", name: "CHF", ip: "10.20.30.31:8105", active: false },  // inactive example
+		{ id: "chf", name: "CHF", ip: "10.20.30.31:8105", active: false },
 	];
-	const nfRows = placeRow(nfs.map((x) => x.id), 0);
-	const nfContentWidth = nfRows.length * CELL_W + (nfRows.length - 1) * GAP_X;
 
-	// Gateway group — add active flag and show/hide IP+Instances
+	// External NFs container and tile positions (single row)
+	const nfsGroupId = "grp-nfs";
+	const nfsRows = nfs.map((_, i) => ({
+		id: nfs[i].id,
+		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
+		y: GROUP_HEADER_H + CONTENT_GAP_Y,
+	}));
+	const nfContentWidth = nfs.length * CELL_W + (nfs.length - 1) * GAP_X;
+	const nfsMaxTileH = Math.max(CELL_H, ...nfs.map(n => estimateTileHeight(n.active && !!n.ip, 0)));
+	const nfsGroupSize = {
+		w: CONTENT_PADDING * 2 + nfContentWidth,
+		h: GROUP_HEADER_H + CONTENT_GAP_Y + nfsMaxTileH + CONTENT_PADDING,
+	};
+
+	// Gateway group (single row), tight container sizing
 	const gatewayId = "grp-gateway";
 	const gatewayApis = [
 		{ id: "api-sm", title: "npcf-sm-policycontrol", ip: "10.20.30.41:8080", instances: 3, active: true },
@@ -170,8 +240,7 @@ export default function DeploymentGraph() {
 		{ id: "api-sl", title: "nchf-spending-limit", ip: "10.20.30.49:8080", instances: 2, active: true },
 		{ id: "api-analytics", title: "nwdaf-analytics-info", ip: "10.20.30.50:8080", instances: 2, active: true },
 	];
-	// Position gateway container under NFs with extra spacing
-	const gatewayTopLeft = { x: 0, y: CELL_H + GAP_Y + 24 };
+	// Position gateway container is computed later based on centered layout
 
 	// Arrange APIs in a single horizontal row
 	const gatewayCols = gatewayApis.length;
@@ -185,10 +254,11 @@ export default function DeploymentGraph() {
 			y: GROUP_HEADER_H + CONTENT_GAP_Y + row * (CELL_H + GAP_Y),
 		});
 	}
+	// Gateway sizing — ignore instances (no extra info lines)
 	const gatewayContentWidth = gatewayCols * CELL_W + (gatewayCols - 1) * GAP_X;
 	const maxGatewayTileH = Math.max(
 		CELL_H,
-		...gatewayApis.map(a => estimateTileHeight(a.active ? !!a.ip : false, a.active && a.instances ? 1 : 0))
+		...gatewayApis.map(a => estimateTileHeight(a.active ? !!a.ip : false, 0))
 	);
 	const gatewaySize = {
 		w: CONTENT_PADDING * 2 + gatewayContentWidth,
@@ -196,10 +266,10 @@ export default function DeploymentGraph() {
 	};
 
 	// Policy Control Engine — add active and Instances
+	// Policy Control Engine — add active and Instances
 	const engineId = "grp-engine";
-	const engineTopLeft = { x: 0, y: gatewayTopLeft.y + gatewaySize.h + GAP_Y };
+	// Engine position is computed later based on centered layout
 	const controllers = [
-		{ id: "ctl-rating", title: "Rating Controller", instances: 2, active: true },
 		{ id: "ctl-session", title: "Session Policy Controller", instances: 2, active: false }, // inactive example
 		{ id: "ctl-ue", title: "UE Policy Controller", instances: 2, active: true },
 		{ id: "ctl-config", title: "Configuration Controller", instances: 1, active: true },
@@ -215,11 +285,11 @@ export default function DeploymentGraph() {
 		x: CONTENT_PADDING + i * (CELL_W + GAP_X),
 		y: ENGINE_HEADER_H + CONTENT_GAP_Y,
 	}));
+	// Engine sizing — ignore instances (no extra info lines, no subtitles)
 	const engineContentWidth = engineRow.length * CELL_W + (engineRow.length - 1) * GAP_X;
-	// dynamic height based on one info line (Instances)
 	const engineMaxTileH = Math.max(
 		CELL_H,
-		...engineRow.map(m => estimateTileHeight(false, m.active && m.instances ? 1 : 0))
+		...engineRow.map(() => estimateTileHeight(false, 0))
 	);
 	const engineSize = {
 		w: CONTENT_PADDING * 2 + engineContentWidth,
@@ -230,7 +300,7 @@ export default function DeploymentGraph() {
 	const registryItems = [
 		{ id: "reg-cache", title: "AWS ElasticCache", subtitle: "cache.cluster.local:6379", instances: 2, active: true },
 		{ id: "reg-codec", title: "vOCS Product Catalog", subtitle: "codec.svc.local:9092", instances: 1, active: false }, // was: "Codec"
-		{ id: "reg-storage", title: "Amazon Aurora", subtitle: "s3.eu-central-1.amazonaws.com", instances: 3, active: true }, // was: "Storage"
+		{ id: "reg-storage", title: "Amazon Aurora", subtitle: "s3.eu-central-1.aws.com", instances: 3, active: true }, // was: "Storage"
 	];
 	const subsItems = [
 		{ id: "sub-abm", title: "vOCS ABM", subtitle: "10.52.3.59", instances: 2, active: true },
@@ -258,62 +328,102 @@ export default function DeploymentGraph() {
 		y: GROUP_HEADER_H + CONTENT_GAP_Y,
 	}));
 
-	// dynamic sizes from content (inactive items contribute only title)
-	const registryMaxH = Math.max(CELL_H, ...registryItems.map(it => estimateTileHeight(it.active && !!it.subtitle, it.active && it.instances ? 1 : 0)));
-	const subsMaxH = Math.max(CELL_H, ...subsItems.map(it => estimateTileHeight(it.active && !!it.subtitle, it.active && it.instances ? 1 : 0)));
-	const intelMaxH = Math.max(CELL_H, ...intelItems.map(it => estimateTileHeight(it.active && !!it.subtitle, it.active && it.instances ? 1 : 0)));
+	// Bottom groups sizing — ignore instances, only consider subtitle for active items
+	const registryMaxH = Math.max(CELL_H, ...registryItems.map(it => estimateTileHeight(it.active && !!it.subtitle, 0)));
+	const subsMaxH = Math.max(CELL_H, ...subsItems.map(it => estimateTileHeight(it.active && !!it.subtitle, 0)));
+	const intelMaxH = Math.max(CELL_H, ...intelItems.map(it => estimateTileHeight(it.active && !!it.subtitle, 0)));
+
 	const registrySize = { w: CONTENT_PADDING * 2 + (registryItems.length * CELL_W + (registryItems.length - 1) * GAP_X), h: GROUP_HEADER_H + CONTENT_GAP_Y + registryMaxH + CONTENT_PADDING };
 	const subsSize = { w: CONTENT_PADDING * 2 + (subsItems.length * CELL_W + (subsItems.length - 1) * GAP_X), h: GROUP_HEADER_H + CONTENT_GAP_Y + subsMaxH + CONTENT_PADDING };
 	const intelSize = { w: CONTENT_PADDING * 2 + (intelItems.length * CELL_W + (intelItems.length - 1) * GAP_X), h: GROUP_HEADER_H + CONTENT_GAP_Y + intelMaxH + CONTENT_PADDING };
 
-	// canvas width picks widest of top rows
-	const totalWidth = Math.max(nfContentWidth, gatewaySize.w, engineSize.w);
+	// canvas width picks widest of top rows (now uses NF group width)
+	const totalWidth = Math.max(nfsGroupSize.w, gatewaySize.w, engineSize.w);
 	const X_OFFSET = 20;
-	const nfBaseX = X_OFFSET + Math.max(0, (totalWidth - nfContentWidth) / 2);
+
+	// baseX offsets to center each block horizontally
+	const nfsX = X_OFFSET + Math.max(0, (totalWidth - nfsGroupSize.w) / 2);
 	const gatewayX = X_OFFSET + Math.max(0, (totalWidth - gatewaySize.w) / 2);
 	const engineX = X_OFFSET + Math.max(0, (totalWidth - engineSize.w) / 2);
 
-	// bottom positions (unchanged)
+	// vertical stacking
+	const nfsTopLeft = { x: nfsX, y: 0 };
+	const gatewayTopLeft = { x: gatewayX, y: nfsTopLeft.y + nfsGroupSize.h + GAP_Y };
+	const engineTopLeft = { x: engineX, y: gatewayTopLeft.y + gatewaySize.h + GAP_Y };
+
+	// horizontally center 3 bottom groups with even gaps
+	// horizontally center 3 bottom groups with even gaps
 	const bottomY = engineTopLeft.y + engineSize.h + GAP_Y;
 	const groupsTotalWidth = registrySize.w + subsSize.w + intelSize.w + 2 * BOTTOM_GROUP_GAP_X;
 	const bottomBaseX = X_OFFSET + Math.max(0, (totalWidth - groupsTotalWidth) / 2);
-
 	const registryPos = { x: bottomBaseX, y: bottomY };
 	const subsPos = { x: bottomBaseX + registrySize.w + BOTTOM_GROUP_GAP_X, y: bottomY };
 	const intelPos = { x: bottomBaseX + registrySize.w + BOTTOM_GROUP_GAP_X + subsSize.w + BOTTOM_GROUP_GAP_X, y: bottomY };
 
 	const nodes: Node[] = [
-		// Top NFs — show only title+IP when active, gray title-only when inactive
-		...nfRows.map((pos, i) => ({
+		// External NFs container — CHANGED: make white like other containers
+		{
+			id: nfsGroupId,
+			type: "group",
+			position: nfsTopLeft,
+			data: { label: <GroupLabel title="External NFs" /> },
+			style: {
+				width: nfsGroupSize.w,
+				height: nfsGroupSize.h,
+				border: "1px solid #E5E7EB", // was blue border
+				background: "#FFFFFF",        // was blue-50
+				borderRadius: 12,
+				padding: 0,
+				boxShadow: "0 2px 6px rgba(2,6,23,0.04)",
+			},
+			selectable: false,
+			connectable: false,
+		},
+		// External NFs tiles inside the container — CHANGED: active => blue, inactive => gray
+		...nfsRows.map((pos, i) => ({
 			id: nfs[i].id,
 			type: "box",
-			position: { x: nfBaseX + pos.x, y: pos.y },
+			parentNode: nfsGroupId,
+			extent: "parent" as const,
+			position: { x: pos.x, y: pos.y },
 			data: {
 				label: (
 					<BoxLabel
 						title={nfs[i].name}
 						subtitle={nfs[i].active ? nfs[i].ip : undefined}
-						tone={nfs[i].active ? "default" : "inactive"}
+						tone={nfs[i].active ? "blue" : "inactive"} // was "default" or "inactive"
+						fixedHeight={nfsMaxTileH}
+						// NEW: star for NWDAF
+						titleSuffix={nfs[i].id === "nwdaf" ? <StarIcon size={12} /> : undefined}
 					/>
 				),
 			},
-			draggable: false,
-			selectable: false,
-			connectable: false,
 			style: NODE_CHILD_STYLE,
+			selectable: false,
+			draggable: false,
+			connectable: false,
 		})),
 
-		// Gateway container
+		// Gateway container — centered using gatewayX
 		{
 			id: gatewayId,
 			type: "group",
 			position: { x: gatewayX, y: gatewayTopLeft.y },
+			targetPosition: Position.Top,
 			data: { label: <GroupLabel title="Gateway" /> },
-			style: { width: gatewaySize.w, height: gatewaySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			style: {
+				width: gatewaySize.w,
+				height: gatewaySize.h,
+				border: "1px solid #E5E7EB",
+				background: "#FFFFFF",
+				borderRadius: 12,
+				padding: 0,
+				boxShadow: "0 2px 6px rgba(2,6,23,0.04)",
+			},
 			selectable: false,
 			connectable: false,
 		},
-		// Gateway API tiles — active: green + IP+Instances; inactive: gray title-only
+		// Gateway API tiles — add star for nwdaf-analytics-info and npcf-ue-policycontrol
 		...gatewayRows.map((pos, i) => ({
 			id: gatewayApis[i].id,
 			type: "box",
@@ -325,9 +435,13 @@ export default function DeploymentGraph() {
 					<BoxLabel
 						title={gatewayApis[i].title}
 						subtitle={gatewayApis[i].active ? gatewayApis[i].ip : undefined}
-						kpis={gatewayApis[i].active && gatewayApis[i].instances ? [{ label: "Instances", value: String(gatewayApis[i].instances) }] : undefined}
 						tone={gatewayApis[i].active ? "default" : "inactive"}
 						fixedHeight={maxGatewayTileH}
+						titleSuffix={
+							(gatewayApis[i].id === "api-analytics" || gatewayApis[i].id === "api-ue")
+								? <StarIcon size={12} />
+								: undefined
+						}
 					/>
 				),
 			},
@@ -337,16 +451,25 @@ export default function DeploymentGraph() {
 			connectable: false,
 		})),
 
-		// Policy Control Engine — tiles with active/inactive
+		// Policy Control Engine — centered using engineX
 		{
 			id: engineId,
 			type: "group",
 			position: { x: engineX, y: engineTopLeft.y },
 			data: { label: <GroupLabel title="Policy Control Engine" /> },
-			style: { width: engineSize.w, height: engineSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			style: {
+				width: engineSize.w,
+				height: engineSize.h,
+				border: "1px solid #E5E7EB",
+				background: "#FFFFFF",
+				borderRadius: 12,
+				padding: 0,
+				boxShadow: "0 2px 6px rgba(2,6,23,0.04)",
+			},
 			selectable: false,
 			connectable: false,
 		},
+		// Engine row: Engine Core + controllers — add star for UE Policy Controller
 		...engineRowPositions.map((pos, idx) => ({
 			id: engineRow[idx].id,
 			type: "box",
@@ -357,9 +480,9 @@ export default function DeploymentGraph() {
 				label: (
 					<BoxLabel
 						title={engineRow[idx].title}
-						kpis={engineRow[idx].active && engineRow[idx].instances ? [{ label: "Instances", value: String(engineRow[idx].instances) }] : undefined}
 						tone={engineRow[idx].active ? "default" : "inactive"}
 						fixedHeight={engineMaxTileH}
+						titleSuffix={engineRow[idx].id === "ctl-ue" ? <StarIcon size={12} /> : undefined}
 					/>
 				),
 			},
@@ -369,13 +492,21 @@ export default function DeploymentGraph() {
 			connectable: false,
 		})),
 
-		// Bottom groups — items with active/inactive
+		// Bottom groups — containers and items (unchanged)
 		{
 			id: "grp-registry",
 			type: "group",
 			position: registryPos,
 			data: { label: <GroupLabel title="Policy Registry" /> },
-			style: { width: registrySize.w, height: registrySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			style: {
+				width: registrySize.w,
+				height: registrySize.h,
+				border: "1px solid #E5E7EB",
+				background: "#FFFFFF",
+				borderRadius: 12,
+				padding: 0,
+				boxShadow: "0 2px 6px rgba(2,6,23,0.04)",
+			},
 			selectable: false,
 			connectable: false,
 		},
@@ -384,7 +515,15 @@ export default function DeploymentGraph() {
 			type: "group",
 			position: subsPos,
 			data: { label: <GroupLabel title="Subscription Manager" /> },
-			style: { width: subsSize.w, height: subsSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			style: {
+				width: subsSize.w,
+				height: subsSize.h,
+				border: "1px solid #E5E7EB",
+				background: "#FFFFFF",
+				borderRadius: 12,
+				padding: 0,
+				boxShadow: "0 2px 6px rgba(2,6,23,0.04)",
+			},
 			selectable: false,
 			connectable: false,
 		},
@@ -392,8 +531,9 @@ export default function DeploymentGraph() {
 			id: "grp-intel",
 			type: "group",
 			position: intelPos,
+			// CHANGED: remove star from group label
 			data: { label: <GroupLabel title="Intelligence & Analytics" /> },
-			style: { width: intelSize.w, height: intelSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
+			style: { width: intelSize.w, height: intelSize.h, border: "1px solid #E5E7EB", background: "#FFFFFF", borderRadius: 12, padding: 0, boxShadow: "0 2px 6px rgba(2,6,23,0.04)" },
 			selectable: false,
 			connectable: false,
 		},
@@ -409,9 +549,10 @@ export default function DeploymentGraph() {
 					<BoxLabel
 						title={registryItems[i].title}
 						subtitle={registryItems[i].active ? registryItems[i].subtitle : undefined}
-						kpis={registryItems[i].active && registryItems[i].instances ? [{ label: "Instances", value: String(registryItems[i].instances) }] : undefined}
 						tone={registryItems[i].active ? "default" : "inactive"}
 						fixedHeight={registryMaxH}
+						// NEW: gold star for vOCS Product Catalog
+						titleSuffix={registryItems[i].id === "reg-codec" ? <StarIcon size={12} /> : undefined}
 					/>
 				),
 			},
@@ -431,7 +572,6 @@ export default function DeploymentGraph() {
 					<BoxLabel
 						title={subsItems[i].title}
 						subtitle={subsItems[i].active ? subsItems[i].subtitle : undefined}
-						kpis={subsItems[i].active && subsItems[i].instances ? [{ label: "Instances", value: String(subsItems[i].instances) }] : undefined}
 						tone={subsItems[i].active ? "default" : "inactive"}
 						fixedHeight={subsMaxH}
 					/>
@@ -453,9 +593,10 @@ export default function DeploymentGraph() {
 					<BoxLabel
 						title={intelItems[i].title}
 						subtitle={intelItems[i].active ? intelItems[i].subtitle : undefined}
-						kpis={intelItems[i].active && intelItems[i].instances ? [{ label: "Instances", value: String(intelItems[i].instances) }] : undefined}
 						tone={intelItems[i].active ? "default" : "inactive"}
 						fixedHeight={intelMaxH}
+						// NEW: add star to AI Agent tile
+						titleSuffix={intelItems[i].id === "intel-agent" ? <StarIcon size={12} /> : undefined}
 					/>
 				),
 			},
@@ -488,8 +629,15 @@ export default function DeploymentGraph() {
 				panOnDrag
 				zoomOnScroll
 			>
-				<Background gap={24} size={1} color="#e5e7eb" />
-				<MiniMap pannable />
+				{/* subtle dotted grid */}
+				<Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#E2E8F0" />
+				{/* calmer minimap colors */}
+				<MiniMap
+					nodeColor={() => "#CBD5E1"}
+					nodeStrokeColor="#94A3B8"
+					maskColor="rgba(15, 23, 42, 0.04)"
+					pannable
+				/>
 				<Controls />
 			</ReactFlow>
 		</div>
