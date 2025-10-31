@@ -2,7 +2,9 @@ import React from "react";
 import ReactFlow, {
 	Background,
 	Controls,
-	MiniMap
+	MiniMap,
+	Position,
+	Handle
 } from "reactflow";
 import type { Edge, Node } from "reactflow";
 import 'reactflow/dist/style.css';
@@ -48,6 +50,28 @@ function GroupLabel({ title }: { title: string }) {
 	);
 }
 
+// Custom ReactFlow nodes that render no handles visually, but provide invisible handles for edges
+function BoxNode({ data, id }: { data: { label: React.ReactNode }, id: string }) {
+	return (
+		<div style={{ position: "relative" }}>
+			{/* invisible handles for edge anchoring */}
+			<Handle id="top" type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
+			<Handle id="bottom" type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
+			{data.label}
+		</div>
+	);
+}
+function GroupNode({ data, id }: { data: { label: React.ReactNode }, id: string }) {
+	return (
+		<div style={{ position: "relative" }}>
+			{/* invisible handles for edge anchoring */}
+			<Handle id="top" type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
+			<Handle id="bottom" type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
+			{data.label}
+		</div>
+	);
+}
+
 export default function DeploymentGraph() {
 	// layout helpers
 	// Increase base sizes and gaps a bit
@@ -65,6 +89,9 @@ export default function DeploymentGraph() {
 	// gap between bottom group containers
 	const BOTTOM_GROUP_GAP_X = 24;
 
+	// NEW: a shared style to hide default dark node border/box for child modules
+	const NODE_CHILD_STYLE: React.CSSProperties = { width: CELL_W, border: "none", background: "transparent", boxShadow: "none" };
+
 	function placeRow(ids: string[], y: number, xStart = 0): { id: string; x: number; y: number }[] {
 		return ids.map((id, i) => ({ id, x: xStart + i * (CELL_W + GAP_X), y }));
 	}
@@ -75,7 +102,7 @@ export default function DeploymentGraph() {
 		const maxY = rows.reduce((m, r) => Math.max(m, r.y), 0);
 		return {
 			w: maxX + CELL_W + CONTENT_PADDING,
-			h: maxY + CELL_H + CONTENT_PADDING + 50,
+			h: maxY + CELL_H + CONTENT_PADDING,
 		};
 	}
 
@@ -122,8 +149,22 @@ export default function DeploymentGraph() {
 			y: GROUP_HEADER_H + CONTENT_GAP_Y + row * (CELL_H + GAP_Y),
 		});
 	}
-	// REPLACED: compute container size from rows to ensure full wrap
-	const gatewaySize = sizeFromRows(gatewayRows);
+	// REPLACED: compute container size dynamically to account for extra lines in tiles (KPIs/subtitle)
+	// Estimate BoxLabel height ≈ padding(16) + title(18) + subtitle(0|16) + (kpiCount>0 ? 4 + 16 * kpiCount : 0)
+	const gatewayContentWidth = gatewayCols * CELL_W + (gatewayCols - 1) * GAP_X;
+	function estimateTileHeight(hasSubtitle: boolean, kpiCount: number) {
+		const pad = 16, titleH = 18, subtitleH = hasSubtitle ? 16 : 0;
+		const kpiBlockH = kpiCount > 0 ? 4 + 16 * kpiCount : 0;
+		return pad + titleH + subtitleH + kpiBlockH;
+	}
+	const maxGatewayTileH = Math.max(
+		CELL_H,
+		...gatewayApis.map(a => estimateTileHeight(false, (a.kpis?.length ?? 3)))
+	);
+	const gatewaySize = {
+		w: CONTENT_PADDING * 2 + gatewayContentWidth,
+		h: GROUP_HEADER_H + CONTENT_GAP_Y + maxGatewayTileH + CONTENT_PADDING + 30,
+	};
 
 	// Policy Control Engine (already tight), single row
 	const engineId = "grp-engine";
@@ -155,7 +196,7 @@ export default function DeploymentGraph() {
 		{ id: "reg-storage", title: "Storage" },
 	];
 	const subsItems = [
-		{ id: "sub-abm", title: "vOCS ABM 10.52.3.59" },
+		{ id: "sub-abm", title: "vOCS ABM", subtitle: "10.52.3.59" },
 		{ id: "sub-udr", title: "UDR" },
 		{ id: "sub-custom", title: "Custom" },
 	];
@@ -211,142 +252,136 @@ export default function DeploymentGraph() {
 		// Top NFs — centered using nfBaseX
 		...nfRows.map((pos, i) => ({
 			id: nfs[i].id,
-			type: "default",
-			position: { x: nfBaseX + pos.x, y: pos.y }, // was: X_OFFSET + pos.x
+			type: "box",
+			position: {
+				x: nfBaseX + pos.x,
+				y: pos.y, // reverted NEF to original Y (no lift)
+			},
 			data: { label: <BoxLabel title={nfs[i].name} subtitle={nfs[i].ip} /> },
 			draggable: false,
 			selectable: false,
-			style: { width: CELL_W },
+			connectable: false,
+			style: NODE_CHILD_STYLE,
 		})),
-
 		// Gateway container — centered using gatewayX
 		{
 			id: gatewayId,
-			type: "default",
-			position: { x: gatewayX, y: gatewayTopLeft.y }, // was: X_OFFSET + 0
+			type: "group",
+			position: { x: gatewayX, y: gatewayTopLeft.y },
+			targetPosition: Position.Top,
 			data: { label: <GroupLabel title="Gateway" /> },
 			style: { width: gatewaySize.w, height: gatewaySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
 			selectable: false,
+			connectable: false,
 		},
-		{
-			id: "ing-gateway",
-			type: "default",
-			parentNode: gatewayId,
-			extent: "parent",
-			position: { x: gatewaySize.w / 2 - 4, y: GROUP_HEADER_H / 2 },
-			data: { label: null },
-			style: { width: 8, height: 8, background: "transparent", border: "none", opacity: 0, pointerEvents: "none" as React.CSSProperties['pointerEvents'] },
-			selectable: false,
-			draggable: false,
-		},
+		// Gateway API tiles (single row, inner offset)
 		...gatewayRows.map((pos, i) => ({
 			id: gatewayApis[i].id,
-			type: "default",
+			type: "box",
 			parentNode: gatewayId,
-			extent: "parent",
+			extent: "parent" as const,
 			position: { x: pos.x, y: pos.y },
 			data: { label: <BoxLabel title={gatewayApis[i].title} tone={gatewayApis[i].tone} kpis={gatewayApis[i].kpis ?? [{ label: "Load", value: "400 TPS" }, { label: "Latency", value: "3.62 ms" }, { label: "Success", value: "100%" }]} /> },
-			style: { width: CELL_W },
+			style: NODE_CHILD_STYLE,
 			selectable: false,
 			draggable: false,
+			connectable: false,
 		})),
-
 		// Policy Control Engine — centered using engineX
 		{
 			id: engineId,
-			type: "default",
-			position: { x: engineX, y: engineTopLeft.y }, // was: X_OFFSET + 0
+			type: "group",
+			position: { x: engineX, y: engineTopLeft.y },
 			data: { label: <GroupLabel title="Policy Control Engine" /> },
 			style: { width: engineSize.w, height: engineSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
 			selectable: false,
+			connectable: false,
 		},
-		{
-			id: "ing-engine",
-			type: "default",
-			parentNode: engineId,
-			extent: "parent",
-			position: { x: engineSize.w / 2 - 4, y: ENGINE_HEADER_H / 2 },
-			data: { label: null },
-			style: { width: 8, height: 8, background: "transparent", border: "none", opacity: 0, pointerEvents: "none" as React.CSSProperties['pointerEvents'] },
-			selectable: false,
-			draggable: false,
-		},
+		// Engine row: Engine Core + controllers (single row, inner offset)
 		...engineRowPositions.map((pos, idx) => ({
 			id: engineRow[idx].id,
-			type: "default",
+			type: "box",
 			parentNode: engineId,
-			extent: "parent",
+			extent: "parent" as const,
 			position: { x: pos.x, y: pos.y },
 			data: { label: <BoxLabel title={engineRow[idx].title} /> },
-			style: { width: CELL_W },
+			style: NODE_CHILD_STYLE,
 			selectable: false,
 			draggable: false,
+			connectable: false,
 		})),
-
 		// Bottom groups — containers (tight) and items with inner offsets
 		{
 			id: "grp-registry",
-			type: "default",
+			type: "group",
 			position: registryPos,
 			data: { label: <GroupLabel title="Policy Registry" /> },
 			style: { width: registrySize.w, height: registrySize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
 			selectable: false,
+			connectable: false,
 		},
 		{
 			id: "grp-subs",
-			type: "default",
+			type: "group",
 			position: subsPos,
 			data: { label: <GroupLabel title="Subscription Manager" /> },
 			style: { width: subsSize.w, height: subsSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
 			selectable: false,
+			connectable: false,
 		},
 		{
 			id: "grp-intel",
-			type: "default",
+			type: "group",
 			position: intelPos,
 			data: { label: <GroupLabel title="Intelligence & Analytics" /> },
 			style: { width: intelSize.w, height: intelSize.h, border: "1px solid #c7d2fe", background: "#f8fafc", borderRadius: 8, padding: 0 },
 			selectable: false,
+			connectable: false,
 		},
-
 		// Bottom group items
 		...registryRows.map((pos, i) => ({
 			id: registryItems[i].id,
-			type: "default",
+			type: "box",
 			parentNode: "grp-registry",
-			extent: "parent",
+			extent: "parent" as const,
 			position: { x: pos.x, y: pos.y },
 			data: { label: <BoxLabel title={registryItems[i].title} /> },
-			style: { width: CELL_W },
+			style: NODE_CHILD_STYLE,
 			selectable: false,
 			draggable: false,
+			connectable: false,
 		})),
 		...subsRows.map((pos, i) => ({
 			id: subsItems[i].id,
-			type: "default",
+			type: "box",
 			parentNode: "grp-subs",
-			extent: "parent",
+			extent: "parent" as const,
 			position: { x: pos.x, y: pos.y },
-			data: { label: <BoxLabel title={subsItems[i].title} /> },
-			style: { width: CELL_W },
+			data: { label: <BoxLabel title={subsItems[i].title} subtitle={(subsItems as any)[i].subtitle} /> },
+			style: NODE_CHILD_STYLE,
 			selectable: false,
 			draggable: false,
+			connectable: false,
 		})),
 		...intelRows.map((pos, i) => ({
 			id: intelItems[i].id,
-			type: "default",
+			type: "box",
 			parentNode: "grp-intel",
-			extent: "parent",
+			extent: "parent" as const,
 			position: { x: pos.x, y: pos.y },
 			data: { label: <BoxLabel title={intelItems[i].title} /> },
-			style: { width: CELL_W },
+			style: NODE_CHILD_STYLE,
 			selectable: false,
 			draggable: false,
+			connectable: false,
 		})),
 	];
 
-	// Empty edges for now
+	// No edges for now
 	const edges: Edge[] = [];
+
+	// Register node types
+	const nodeTypes = { box: BoxNode, group: GroupNode };
 
 	return (
 		<div style={{ width: "100%", height: "100%" }}>
@@ -356,6 +391,7 @@ export default function DeploymentGraph() {
 				fitView
 				fitViewOptions={{ padding: 0.25 }}
 				proOptions={{ hideAttribution: true }}
+				nodeTypes={nodeTypes}
 				nodesDraggable={false}
 				nodesConnectable={false}
 				elementsSelectable={false}
