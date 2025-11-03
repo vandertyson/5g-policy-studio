@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Breadcrumb, Button, Card, Input, Menu, Space, Tag, Select } from "antd";
+import { Breadcrumb, Button, Card, Input, Menu, Space, Tag, Select, Tabs } from "antd";
 import {
 	BookOutlined,
 	ProjectOutlined,
@@ -297,6 +297,28 @@ const MY_DEPLOYMENTS:
 // NEW: small required (*) mark
 const RequiredMark = () => <span style={{ color: "#EF4444", marginLeft: 4 }}>*</span>;
 
+// CHANGED: TabChip — add horizontal padding for the label text
+function TabChip({ text, active }: { text: string; active?: boolean }) {
+	return (
+		<span
+			style={{
+				display: "inline-flex",
+				alignItems: "center",
+				gap: 0,
+				padding: "0 12px", // added horizontal padding
+				fontWeight: 900,
+				fontSize: 13, // larger
+				color: active ? "#0F172A" : "#64748B",
+				lineHeight: 1.2,
+				textTransform: "uppercase",
+				letterSpacing: 0.2,
+			}}
+		>
+			{text}
+		</span>
+	);
+}
+
 export default function Explorer() {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -330,10 +352,16 @@ export default function Explorer() {
 
 	// NEW: API Tool state based on current module
 	const specs = React.useMemo(() => apiSpecsFor(effectiveSelected), [effectiveSelected]);
+	const groupKey = React.useMemo(() => findGroupByMod(effectiveSelected)?.key ?? "", [effectiveSelected]);
 	const hasApi = specs.length > 0 && !effectiveSelected.includes("overview") && !effectiveSelected.startsWith("intro-");
+	const hasCLI = ["engine", "registry", "designer"].includes(groupKey);
+	const hasMCP = groupKey === "intel";
+	const canOpenTool = true;
+
+	// tool open state (existing)
 	const [apiOpen, setApiOpen] = React.useState(false);
 
-	// NEW: API Tool form state
+	// existing API Tool state (baseUrl, method, pathParams, query, headersJson, body, resp, etc.)
 	const [selIdx, setSelIdx] = React.useState(0);
 	const currentSpec = specs[selIdx] ?? specs[0];
 	const [baseUrl, setBaseUrl] = React.useState("https://api.example.com");
@@ -440,6 +468,51 @@ export default function Explorer() {
 		copyToClipboard(toCurl());
 	}
 
+	// NEW: Tool tab state
+	type ToolTab = "api" | "cli" | "mcp";
+	const [activeToolTab, setActiveToolTab] = React.useState<ToolTab>("api");
+	React.useEffect(() => {
+		// Default to API tab for all modules
+		setActiveToolTab("api");
+	}, [effectiveSelected, apiOpen]);
+
+	// CLI tab helpers
+	const cliCommand = React.useMemo(() => {
+		const mod = effectiveSelected;
+		const base = baseUrl || "https://api.example.com";
+		return [
+			`vocli --base ${JSON.stringify(base)} ${mod} list`,
+			`vocli --base ${JSON.stringify(base)} ${mod} get --id <id>`,
+			`vocli --base ${JSON.stringify(base)} ${mod} create --file payload.json`,
+		].join("\n");
+	}, [baseUrl, effectiveSelected]);
+
+	// MCP tab state/helpers
+	const [mcpAgentId, setMcpAgentId] = React.useState("agent-001");
+	const [mcpBody, setMcpBody] = React.useState('{\n  "task": "analyze",\n  "params": {\n    "sample": true\n  }\n}');
+	const [mcpRespStatus, setMcpRespStatus] = React.useState<string>("");
+	const [mcpRespHeaders, setMcpRespHeaders] = React.useState<string>("");
+	const [mcpRespBody, setMcpRespBody] = React.useState<string>("");
+	function prettyMcpBody() {
+		try { setMcpBody(JSON.stringify(JSON.parse(mcpBody), null, 2)); } catch {}
+	}
+	async function sendMcp() {
+		try {
+			setMcpRespStatus("Requesting...");
+			setMcpRespHeaders(""); setMcpRespBody("");
+			const url = `${baseUrl.replace(/\/+$/,"")}/mcp/v1/agents/${encodeURIComponent(mcpAgentId)}/invoke`;
+			let headers: Record<string, string> = {};
+			try { headers = headersJson ? JSON.parse(headersJson) : {}; } catch {}
+			headers["Content-Type"] = headers["Content-Type"] || "application/json";
+			const res = await fetch(url, { method: "POST", headers, body: mcpBody });
+			setMcpRespStatus(`${res.status} ${res.statusText}`);
+			const hs: string[] = []; res.headers.forEach((v, k) => hs.push(`${k}: ${v}`)); setMcpRespHeaders(hs.join("\n"));
+			setMcpRespBody(await res.text());
+		} catch (e: any) {
+			setMcpRespStatus("Request failed"); setMcpRespHeaders(""); setMcpRespBody(String(e?.message ?? e));
+		}
+	}
+
 	return (
 		<div className="p-6">
 			<div style={{ display: "flex", height: "100%", minHeight: "calc(100vh - 80px)" }}>
@@ -466,7 +539,7 @@ export default function Explorer() {
 							border: "1px solid #E2E8F0",
 							color: "#0F172A",
 							fontWeight: 800,
-							fontSize: 11,
+							fontSize: 18,
 							letterSpacing: 0.4,
 							textTransform: "uppercase",
 						}}
@@ -497,15 +570,14 @@ export default function Explorer() {
 				{/* Main content — Documentation only */}
 				<main style={{ flex: 1, padding: 20, background: "#F8FAFC", position: "relative" }}>
 					<div style={{ margin: "0 auto" }}>
-						{/* Header: breadcrumb + version select + API Testing */}
+						{/* Header: breadcrumb + version select + Developer Tools */}
 						<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
 							<Breadcrumb items={[{ title: "Explorer" }, { title: doc.group }, { title: doc.title }]} />
 							<Space>
-								{hasApi ? (
-									<Button type="primary" onClick={() => setApiOpen((v) => !v)}>
-										API Testing
-									</Button>
-								) : null}
+								{/* CHANGED: rename to Developer Tools and always show */}
+								<Button type="primary" onClick={() => setApiOpen((v) => !v)}>
+									Developer Tools
+								</Button>
 								<Select value={version} onChange={setVersion} options={versionOptions} style={{ width: 120 }} size="middle" />
 							</Space>
 						</div>
@@ -539,15 +611,15 @@ export default function Explorer() {
 						</Card>
 					</div>
 
-					{/* NEW: API Tool — right collapsible sidebar */}
+					{/* Right sidebar tool with tabs */}
 					{apiOpen ? (
 						<div
 							style={{
 								position: "fixed",
 								right: 16,
-								top: 86, // account for page padding/header
+								top: 86,
 								bottom: 16,
-								width: 440,
+								width: 480,
 								background: "#FFFFFF",
 								border: "1px solid #E5E7EB",
 								borderRadius: 12,
@@ -561,167 +633,281 @@ export default function Explorer() {
 							{/* Tool header */}
 							<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderBottom: "1px solid #E5E7EB", background: "#F8FAFC" }}>
 								<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-									<span style={{ fontWeight: 900, fontSize: 14, textTransform: "uppercase", letterSpacing: 0.4 }}>API Tool</span>
+									<span style={{ fontWeight: 900, fontSize: 18, textTransform: "uppercase", letterSpacing: 0.4 }}>Developer Tools</span>
 									<span style={{ color: "#64748B" }}>· {doc.title}</span>
 								</div>
 								<Button size="small" onClick={() => setApiOpen(false)}>Close</Button>
 							</div>
 
-							{/* Tool body */}
-							<div style={{ padding: 12, overflow: "auto", display: "grid", gap: 10 }}>
-								{/* Endpoint select */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ fontWeight: 700 }}>Endpoint</div>
-									<Select
-										value={selIdx}
-										onChange={(v) => setSelIdx(v)}
-										optionLabelProp="label"
-										style={{ width: "100%" }}
-										options={specs.map((s, i) => ({
-											value: i,
-											label: `${s.method} ${s.path}`,
-											// custom render
-											title: s.summary ?? "",
-										}))}
-									/>
-									<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-										<MethodTag method={currentSpec?.method ?? "GET"} />
-										<div style={{ fontFamily: "monospace", fontSize: 12, color: "#0F172A" }}>{currentSpec?.path}</div>
-									</div>
-									{currentSpec?.summary ? <div style={{ color: "#64748B", fontSize: 12 }}>{currentSpec.summary}</div> : null}
-								</div>
-
-								{/* Deployment selector — label on its own line + required mark */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ fontWeight: 700 }}>Deployment<RequiredMark /></div>
-									<Select
-										placeholder="Select from my deployment"
-										style={{ width: "100%" }}
-										optionLabelProp="label"
-										options={MY_DEPLOYMENTS.map((d) => ({
-											value: d.id,
-											label: `${d.name} (${d.platform})`,
-											title: d.baseUrl,
-											children: (
-												<div style={{ display: "flex", flexDirection: "column" }}>
-													<span style={{ fontWeight: 600 }}>
-														{d.name} <Tag style={{ marginLeft: 6 }}>{d.platform.toUpperCase()}</Tag>
-													</span>
-													<span style={{ color: "#64748B", fontSize: 12 }}>{d.baseUrl}</span>
-												</div>
-											),
-										}))}
-										dropdownRender={(menu) => (
-											<div style={{ padding: 8 }}>
-												<div style={{ fontWeight: 800, marginBottom: 6 }}>My Deployments</div>
-												{menu}
-											</div>
-										)}
-										onChange={(id: string) => {
-											const dep = MY_DEPLOYMENTS.find((x) => x.id === id);
-											if (dep) setBaseUrl(dep.baseUrl);
-										}}
-									/>
-								</div>
-
-								{/* URL label + copy, then URL value */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-										<div style={{ fontWeight: 700 }}>URL</div>
-										<Button size="small" onClick={() => copyToClipboard(currentUrl)}>Copy</Button>
-									</div>
-									<pre
-										style={{
-											margin: 0,
+							<div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+								{/* CHANGED: reduce top padding and vertical density */}
+								<div>
+									<Tabs
+										activeKey={activeToolTab}
+										onChange={(k) => setActiveToolTab(k as any)}
+										type="line"
+										size="middle" // was "large"
+										tabBarGutter={8}
+										tabBarStyle={{
+											padding: "0 6px",
 											background: "#F8FAFC",
-											border: "1px solid #E5E7EB",
-											borderRadius: 8,
-											padding: "8px 10px",
-											fontFamily: "monospace",
-											fontSize: 12,
-											whiteSpace: "pre-wrap",
-											wordBreak: "break-all",
+											borderBottom: "1px solid #E5E7EB",
+											margin: 0,
 										}}
-									>
-										{currentUrl}
-									</pre>
+										items={[
+											{ key: "cli", label: <TabChip active={activeToolTab === "cli"} text="CLI" /> },
+											{ key: "api", label: <TabChip active={activeToolTab === "api"} text="API TOOL" /> },
+											{ key: "mcp", label: <TabChip active={activeToolTab === "mcp"} text="MCP TOOL" /> },
+										]}
+									/>
 								</div>
 
-								{/* Path params */}
-								{(() => {
-									const names = parsePathParams(currentSpec?.path ?? "");
-									if (names.length === 0) return null;
-									return (
-										<div style={{ display: "grid", gap: 6 }}>
-											<div style={{ fontWeight: 700 }}>Path Parameters</div>
-											{names.map((n) => (
-												<div key={n} style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 8, alignItems: "center" }}>
-													<label style={{ color: "#475569" }}>
-														{n}
-														<RequiredMark />
-													</label>
-													<Input
-														value={pathParams[n] ?? ""}
-														onChange={(e) => setPathParams((p) => ({ ...p, [n]: e.target.value }))}
-														placeholder={`Enter ${n}`}
-													/>
+								{/* CHANGED: slightly tighter inner padding */}
+								<div style={{ padding: 12, overflow: "auto", display: activeToolTab ? "block" : "none" }}>{/* was 16 */}
+									{/* API tab */}
+									{activeToolTab === "api" && (
+										<div style={{ display: "grid", gap: 12 }}>
+											{/* Endpoint select */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ fontWeight: 700 }}>Endpoint</div>
+												<Select
+													value={selIdx}
+													onChange={(v) => setSelIdx(v)}
+													optionLabelProp="label"
+													style={{ width: "100%" }}
+													options={specs.map((s, i) => ({
+														value: i,
+														label: `${s.method} ${s.path}`,
+														// custom render
+														title: s.summary ?? "",
+													}))}
+												/>
+												<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+													<MethodTag method={currentSpec?.method ?? "GET"} />
+													<div style={{ fontFamily: "monospace", fontSize: 12, color: "#0F172A" }}>{currentSpec?.path}</div>
 												</div>
-											))}
+												{currentSpec?.summary ? <div style={{ color: "#64748B", fontSize: 12 }}>{currentSpec.summary}</div> : null}
+											</div>
+
+											{/* Deployment */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ fontWeight: 700 }}>Deployment<RequiredMark /></div>
+												<Select
+													placeholder="Select from my deployment"
+													style={{ width: "100%" }}
+													optionLabelProp="label"
+													options={MY_DEPLOYMENTS.map((d) => ({
+														value: d.id,
+														label: `${d.name} (${d.platform})`,
+														title: d.baseUrl,
+														children: (
+															<div style={{ display: "flex", flexDirection: "column" }}>
+																<span style={{ fontWeight: 600 }}>
+																	{d.name} <Tag style={{ marginLeft: 6 }}>{d.platform.toUpperCase()}</Tag>
+																</span>
+																<span style={{ color: "#64748B", fontSize: 12 }}>{d.baseUrl}</span>
+															</div>
+														),
+													}))}
+													onChange={(id: string) => {
+														const dep = MY_DEPLOYMENTS.find((x) => x.id === id);
+														if (dep) setBaseUrl(dep.baseUrl);
+													}}
+												/>
+											</div>
+
+											{/* URL */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 700 }}>URL</div>
+													<Button size="small" onClick={() => copyToClipboard(currentUrl)}>Copy</Button>
+												</div>
+												<pre style={{ margin: 0, background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", fontFamily: "monospace", fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+													{currentUrl}
+												</pre>
+											</div>
+
+											{/* Path params */}
+											{(() => {
+												const names = parsePathParams(currentSpec?.path ?? "");
+												if (names.length === 0) return null;
+												return (
+													<div style={{ display: "grid", gap: 6 }}>
+														<div style={{ fontWeight: 700 }}>Path Parameters</div>
+														{names.map((n) => (
+															<div key={n} style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 8, alignItems: "center" }}>
+																<label style={{ color: "#475569" }}>
+																	{n}
+																	<RequiredMark />
+																</label>
+																<Input
+																	value={pathParams[n] ?? ""}
+																	onChange={(e) => setPathParams((p) => ({ ...p, [n]: e.target.value }))}
+																	placeholder={`Enter ${n}`}
+																/>
+															</div>
+														))}
+													</div>
+												);
+											})()}
+
+											{/* Query */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ fontWeight: 700 }}>Query (key=value&...)</div>
+												<Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. type=active&limit=10" />
+											</div>
+
+											{/* Headers */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 700 }}>Headers (JSON)</div>
+													<Button size="small" onClick={addAccessToken}>Add access token</Button>
+												</div>
+												<Input.TextArea rows={4} value={headersJson} onChange={(e) => setHeadersJson(e.target.value)} />
+											</div>
+
+											{/* Body */}
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 700 }}>Body</div>
+													<Space size={8}>
+														<Button size="small" onClick={prettyBody} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"}>Pretty</Button>
+														<Button size="small" onClick={() => copyToClipboard(body)}>Copy</Button>
+													</Space>
+												</div>
+												<Input.TextArea rows={6} value={body} onChange={(e) => setBody(e.target.value)} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"} />
+											</div>
+
+											{/* Send + Export cURL */}
+											<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+												<Button onClick={exportCurl}>Export cURL</Button>
+												<Button type="primary" onClick={sendToolRequest}>Send</Button>
+											</div>
+
+											{/* Response */}
+											<div style={{ display: "grid", gap: 8 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 800 }}>Response</div>
+													<Tag color={respStatus.startsWith("2") ? "green" : respStatus ? "red" : "default"}>{respStatus || "—"}</Tag>
+												</div>
+												<div>
+													<div style={{ fontWeight: 700, marginBottom: 6 }}>Headers</div>
+													<pre style={{ background: "#F8FAFC", border: "1px solid #E7E7EB", borderRadius: 8, padding: 8, minHeight: 90, whiteSpace: "pre-wrap" }}>
+														{respHeaders || "—"}
+													</pre>
+												</div>
+												<div>
+													<div style={{ fontWeight: 700, marginBottom: 6 }}>Body</div>
+													<pre style={{ background: "#F8FAFC", border: "1px solid #E7E7EB", borderRadius: 8, padding: 8, minHeight: 140, whiteSpace: "pre-wrap", overflowX: "auto" }}>
+														{respBody || "—"}
+													</pre>
+												</div>
+											</div>
 										</div>
-									);
-								})()}
+									)}
 
-								{/* Query string */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ fontWeight: 700 }}>Query (key=value&...)</div>
-									<Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. type=active&limit=10" />
-								</div>
+									{activeToolTab === "cli" && (
+										<div style={{ display: "grid", gap: 12 }}>
+											<div style={{ fontWeight: 700 }}>Deployment<RequiredMark /></div>
+											<Select
+												placeholder="Select from my deployment"
+												style={{ width: "100%" }}
+												optionLabelProp="label"
+												options={MY_DEPLOYMENTS.map((d) => ({
+													value: d.id,
+													label: `${d.name} (${d.platform})`,
+													title: d.baseUrl,
+													children: (
+														<div style={{ display: "flex", flexDirection: "column" }}>
+															<span style={{ fontWeight: 600 }}>
+																{d.name} <Tag style={{ marginLeft: 6 }}>{d.platform.toUpperCase()}</Tag>
+															</span>
+															<span style={{ color: "#64748B", fontSize: 12 }}>{d.baseUrl}</span>
+														</div>
+													),
+												}))}
+												onChange={(id: string) => {
+													const dep = MY_DEPLOYMENTS.find((x) => x.id === id);
+													if (dep) setBaseUrl(dep.baseUrl);
+												}}
+											/>
 
-								{/* Headers with 'Add access token' */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-										<div style={{ fontWeight: 700 }}>Headers (JSON)</div>
-										<Button size="small" onClick={addAccessToken}>Add access token</Button>
-									</div>
-									<Input.TextArea rows={4} value={headersJson} onChange={(e) => setHeadersJson(e.target.value)} />
-								</div>
+											<div style={{ fontWeight: 700 }}>Commands</div>
+											<pre style={{ margin: 0, background: "#0B1023", color: "#E5E7EB", borderRadius: 8, padding: 10, fontFamily: "monospace", fontSize: 12 }}>
+												{cliCommand}
+											</pre>
+											<div style={{ display: "flex", justifyContent: "flex-end" }}>
+												<Button onClick={() => copyToClipboard(cliCommand)}>Copy</Button>
+											</div>
+										</div>
+									)}
 
-								{/* Body with Pretty/Copy */}
-								<div style={{ display: "grid", gap: 6 }}>
-									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-										<div style={{ fontWeight: 700 }}>Body</div>
-										<Space size={8}>
-											<Button size="small" onClick={prettyBody} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"}>Pretty</Button>
-											<Button size="small" onClick={() => copyToClipboard(body)}>Copy</Button>
-										</Space>
-									</div>
-									<Input.TextArea rows={6} value={body} onChange={(e) => setBody(e.target.value)} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"} />
-								</div>
+									{activeToolTab === "mcp" && (
+										<div style={{ display: "grid", gap: 12 }}>
+											<div style={{ fontWeight: 700 }}>Deployment<RequiredMark /></div>
+											<Select
+												placeholder="Select from my deployment"
+												style={{ width: "100%" }}
+												optionLabelProp="label"
+												options={MY_DEPLOYMENTS.map((d) => ({
+													value: d.id,
+													label: `${d.name} (${d.platform})`,
+													title: d.baseUrl,
+													children: (
+														<div style={{ display: "flex", flexDirection: "column" }}>
+															<span style={{ fontWeight: 600 }}>
+																{d.name} <Tag style={{ marginLeft: 6 }}>{d.platform.toUpperCase()}</Tag>
+															</span>
+															<span style={{ color: "#64748B", fontSize: 12 }}>{d.baseUrl}</span>
+														</div>
+													),
+												}))}
+												onChange={(id: string) => {
+													const dep = MY_DEPLOYMENTS.find((x) => x.id === id);
+													if (dep) setBaseUrl(dep.baseUrl);
+												}}
+											/>
 
-								{/* Send + Export cURL */}
-								<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-									<Button onClick={exportCurl}>Export cURL</Button>
-									<Button type="primary" onClick={sendToolRequest}>Send</Button>
-								</div>
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ fontWeight: 700 }}>Agent ID<RequiredMark /></div>
+												<Input value={mcpAgentId} onChange={(e) => setMcpAgentId(e.target.value)} placeholder="e.g. agent-001" />
+											</div>
 
-								{/* Response */}
-								<div style={{ display: "grid", gap: 8 }}>
-									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-										<div style={{ fontWeight: 800 }}>Response</div>
-										<Tag color={respStatus.startsWith("2") ? "green" : respStatus ? "red" : "default"}>{respStatus || "—"}</Tag>
-									</div>
-									<div>
-										<div style={{ fontWeight: 700, marginBottom: 6 }}>Headers</div>
-										<pre style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: 8, minHeight: 90, whiteSpace: "pre-wrap" }}>
-											{respHeaders || "—"}
-										</pre>
-									</div>
-									<div>
-										<div style={{ fontWeight: 700, marginBottom: 6 }}>Body</div>
-										<pre style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: 8, minHeight: 140, whiteSpace: "pre-wrap", overflowX: "auto" }}>
-											{respBody || "—"}
-										</pre>
-									</div>
+											<div style={{ display: "grid", gap: 6 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 700 }}>Payload</div>
+													<Space size={8}>
+														<Button size="small" onClick={prettyMcpBody}>Pretty</Button>
+														<Button size="small" onClick={() => copyToClipboard(mcpBody)}>Copy</Button>
+													</Space>
+												</div>
+												<Input.TextArea rows={8} value={mcpBody} onChange={(e) => setMcpBody(e.target.value)} />
+											</div>
+
+											<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+												<Button type="primary" onClick={sendMcp}>Send</Button>
+											</div>
+
+											<div style={{ display: "grid", gap: 8 }}>
+												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+													<div style={{ fontWeight: 800 }}>Response</div>
+													<Tag color={mcpRespStatus.startsWith("2") ? "green" : mcpRespStatus ? "red" : "default"}>{mcpRespStatus || "—"}</Tag>
+												</div>
+												<div>
+													<div style={{ fontWeight: 700, marginBottom: 6 }}>Headers</div>
+													<pre style={{ background: "#F8FAFC", border: "1px solid #E7E7EB", borderRadius: 8, padding: 8, minHeight: 90, whiteSpace: "pre-wrap" }}>
+														{mcpRespHeaders || "—"}
+													</pre>
+												</div>
+												<div>
+													<div style={{ fontWeight: 700, marginBottom: 6 }}>Body</div>
+													<pre style={{ background: "#F8FAFC", border: "1px solid #E7E7EB", borderRadius: 8, padding: 8, minHeight: 140, whiteSpace: "pre-wrap", overflowX: "auto" }}>
+														{mcpRespBody || "—"}
+													</pre>
+												</div>
+											</div>
+										</div>
+									)}
 								</div>
 							</div>
 						</div>
