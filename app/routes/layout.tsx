@@ -43,6 +43,15 @@ export default function AppLayout() {
 							}>
 								Designer
 							</NavLink>
+						</li>						
+						<li>
+							<NavLink to="/explorer" className={({ isActive }) =>
+								isActive
+									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
+									: "block px-3 py-2"
+							}>
+								Explorer
+							</NavLink>
 						</li>
 						<li>
 							<NavLink to="/management" className={({ isActive }) =>
@@ -51,15 +60,6 @@ export default function AppLayout() {
 									: "block px-3 py-2"
 							}>
 								Management
-							</NavLink>
-						</li>
-						<li>
-							<NavLink to="/explorer" className={({ isActive }) =>
-								isActive
-									? "block px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md"
-									: "block px-3 py-2"
-							}>
-								Explorer
 							</NavLink>
 						</li>
 					</ul>

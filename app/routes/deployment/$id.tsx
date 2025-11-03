@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Descriptions, Form, Input, Button, Card, Tabs as AntTabs, Collapse, Space } from "antd";
+import { Descriptions, Form, Input, Button, Card, Tabs as AntTabs, Collapse, Space, Switch, Select } from "antd";
 import { PlatformConfig } from "../../components/platforms/PlatformConfig";
 import FeatureAccordion, { type FeaturesConfig } from "../../components/features/FeatureAccordion";
 import ExportImportControls from "../../components/ExportImportControls";
@@ -192,6 +192,184 @@ export default function DeploymentDetail() {
 		);
 	};
 
+	// NEW: build explorer docs URL for a module key
+	// Before: const docUrl = (modKey: string) => `/explorer/${modKey}`;
+	const docUrl = (modKey: string) => `/explorer?module=${encodeURIComponent(modKey)}`;
+
+	// Helper to render a module config block (edit or view)
+	const integrationTarget = (modId: string): string => {
+		switch (modId) {
+			case "npcf-sm-policycontrol": return "SMF";
+			case "npcf-am-policycontrol": return "AMF";
+			case "npcf-ue-policycontrol": return "UE";
+			case "npcf-policy-authorization": return "PCF";
+			case "nwdaf-analytics-info": return "NWDAF";
+			default: return "-";
+		}
+	};
+	const processUpstream = (group: string): { label: string; placeholder: string } => {
+		if (group === "gateway") return { label: "Engine Endpoint", placeholder: "http(s)://engine.svc.local:8080" };
+		if (group === "engine") return { label: "Registry Endpoint", placeholder: "http(s)://registry.svc.local:8080" };
+		return { label: "Upstream Endpoint", placeholder: "http(s)://service.svc.local:8080" };
+	};
+
+	const ModuleConfig = ({ id, name, group }: { id: string; name: string; group: string }) => {
+		const upstream = processUpstream(group);
+		const target = integrationTarget(id);
+		if (editingDeployment) {
+			return (
+				<Form layout="vertical" initialValues={deploymentCfg} onValuesChange={(_, all) => setDeploymentCfg(all)}>
+					<Collapse defaultActiveKey={["res"]}>
+						<Panel key="res" header={<span className="font-semibold">Resource Configuration</span>} collapsible="icon">
+							<Form.Item name={`${id}_replicas`} label="Replicas">
+								<Input placeholder="e.g. 3" />
+							</Form.Item>
+							<Form.Item name={`${id}_cpu`} label="CPU">
+								<Input placeholder="e.g. 500m" />
+							</Form.Item>
+							<Form.Item name={`${id}_memory`} label="Memory">
+								<Input placeholder="e.g. 512Mi" />
+							</Form.Item>
+							<Form.Item name={`${id}_network`} label="Network">
+								<Input placeholder="e.g. 100Mb/s" />
+							</Form.Item>
+						</Panel>
+
+						<Panel key="int" header={<span className="font-semibold">Integration Configuration</span>} collapsible="icon">
+							<Form.Item label="Connects To">
+								<Input value={target} disabled />
+							</Form.Item>
+							<Form.Item name={`${id}_endpoint`} label="Endpoint URL">
+								<Input placeholder={`e.g. https://${target.toLowerCase()}.svc.local:8443`} />
+							</Form.Item>
+
+							{/* stop propagation so toggles don't collapse panels on click */}
+							<div style={{ display: "flex", gap: 16 }} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+								<Form.Item name={`${id}_tls`} label="TLS" valuePropName="checked" style={{ marginBottom: 0 }}>
+									<Switch />
+								</Form.Item>
+								<Form.Item name={`${id}_mtls`} label="mTLS" valuePropName="checked" style={{ marginBottom: 0 }}>
+									<Switch />
+								</Form.Item>
+								<Form.Item name={`${id}_oauth2`} label="OAuth2" valuePropName="checked" style={{ marginBottom: 0 }}>
+									<Switch />
+								</Form.Item>
+							</div>
+
+							<Form.Item name={`${id}_ca`} label="CA Certificate (optional)">
+								<Input.TextArea rows={3} placeholder="-----BEGIN CERTIFICATE----- ..." />
+							</Form.Item>
+						</Panel>
+
+						<Panel key="proc" header={<span className="font-semibold">Process Configuration</span>} collapsible="icon">
+							<Form.Item name={`${id}_loglevel`} label="Log Level" initialValue="info">
+								<Select
+									options={[
+										{ value: "error", label: "error" },
+										{ value: "warn", label: "warn" },
+										{ value: "info", label: "info" },
+										{ value: "debug", label: "debug" },
+									]}
+								/>
+							</Form.Item>
+							<Form.Item name={`${id}_upstream`} label={upstream.label}>
+								<Input placeholder={upstream.placeholder} />
+							</Form.Item>
+						</Panel>
+					</Collapse>
+				</Form>
+			);
+		}
+		// view mode
+		return (
+			<Collapse>
+				<Panel key="res_v" header={<span className="font-semibold">Resource Configuration</span>} collapsible="icon">
+					<Descriptions column={2} bordered size="small">
+						<Descriptions.Item label="Module">{name}</Descriptions.Item>
+						<Descriptions.Item label="Replicas">{deploymentCfg[`${id}_replicas`] ?? deploymentCfg.replicas}</Descriptions.Item>
+						<Descriptions.Item label="CPU">{deploymentCfg[`${id}_cpu`] ?? deploymentCfg.cpu}</Descriptions.Item>
+						<Descriptions.Item label="Memory">{deploymentCfg[`${id}_memory`] ?? deploymentCfg.memory}</Descriptions.Item>
+						<Descriptions.Item label="Network">{deploymentCfg[`${id}_network`] ?? "-"}</Descriptions.Item>
+					</Descriptions>
+				</Panel>
+
+				<Panel key="int_v" header={<span className="font-semibold">Integration Configuration</span>} collapsible="icon">
+					<Descriptions column={2} bordered size="small">
+						<Descriptions.Item label="Connects To">{target}</Descriptions.Item>
+						<Descriptions.Item label="Endpoint URL">{deploymentCfg[`${id}_endpoint`] ?? "-"}</Descriptions.Item>
+						<Descriptions.Item label="TLS">{(deploymentCfg[`${id}_tls`] ? "Yes" : "No")}</Descriptions.Item>
+						<Descriptions.Item label="mTLS">{(deploymentCfg[`${id}_mtls`] ? "Yes" : "No")}</Descriptions.Item>
+						<Descriptions.Item label="OAuth2">{(deploymentCfg[`${id}_oauth2`] ? "Yes" : "No")}</Descriptions.Item>
+					</Descriptions>
+				</Panel>
+
+				<Panel key="proc_v" header={<span className="font-semibold">Process Configuration</span>} collapsible="icon">
+					<Descriptions column={2} bordered size="small">
+						<Descriptions.Item label="Log Level">{deploymentCfg[`${id}_loglevel`] ?? "info"}</Descriptions.Item>
+						<Descriptions.Item label={upstream.label}>{deploymentCfg[`${id}_upstream`] ?? "-"}</Descriptions.Item>
+					</Descriptions>
+				</Panel>
+			</Collapse>
+		);
+	};
+
+	// Lvl1 groups and lvl2 modules (mirror Overview)
+	const appHierarchy = [
+		{
+			key: "gateway",
+			title: "Gateway",
+			children: [
+				{ key: "npcf-sm-policycontrol", label: "npcf-sm-policycontrol" },
+				{ key: "npcf-am-policycontrol", label: "npcf-am-policycontrol" },
+				{ key: "npcf-ue-policycontrol", label: "npcf-ue-policycontrol" },
+				{ key: "npcf-policy-authorization", label: "npcf-policy-authorization" },
+				{ key: "npcf-event-exposure", label: "npcf-event-exposure" },
+				{ key: "npcf-pdtq-policycontrol", label: "npcf-pdtq-policycontrol" },
+				{ key: "npcf-bdt-policycontrol", label: "npcf-bdt-policycontrol" },
+				{ key: "npcf-mbs-policycontrol", label: "npcf-mbs-policycontrol" },
+				{ key: "nchf-spending-limit", label: "nchf-spending-limit" },
+				{ key: "nwdaf-analytics-info", label: "nwdaf-analytics-info" },
+			],
+		},
+		{
+			key: "engine",
+			title: "Policy Control Engine",
+			children: [
+				{ key: "engine-core", label: "Engine Core" },
+				{ key: "ctl-session", label: "Session Policy Controller" },
+				{ key: "ctl-ue", label: "UE Policy Controller" },
+				{ key: "ctl-config", label: "Configuration Controller" },
+				{ key: "ctl-etc", label: "…" },
+			],
+		},
+		{
+			key: "registry",
+			title: "Policy Registry",
+			children: [
+				{ key: "reg-cache", label: "AWS ElasticCache" },
+				{ key: "reg-codec", label: "vOCS Product Catalog" },
+				{ key: "reg-storage", label: "Amazon Aurora" },
+			],
+		},
+		{
+			key: "subs",
+			title: "Subscription Management",
+			children: [
+				{ key: "sub-abm", label: "vOCS ABM" },
+				{ key: "sub-udr", label: "UDR" },
+				{ key: "sub-custom", label: "Custom" },
+			],
+		},
+		{
+			key: "intel",
+			title: "Intelligence & Analytics",
+			children: [
+				{ key: "intel-mcp", label: "MCP Server" },
+				{ key: "intel-agent", label: "AI Agent" },
+			],
+		},
+	];
+
 	const tabs = [
 		{
 			id: "metadata" as const,
@@ -300,10 +478,7 @@ export default function DeploymentDetail() {
 					</div>
 					{/* Top-level panels: Overview, Platform Configuration, Application Configuration */}
 					<Collapse defaultActiveKey={["overview"]}>
-						<Panel
-							key="overview"
-							header={<div className="uppercase font-extrabold text-sm">Overview</div>}
-						>
+						<Panel key="overview" header={<div className="uppercase font-extrabold text-sm">Overview</div>}>
 							<div style={{ height: 600, borderRadius: 6, overflow: "hidden", background: "var(--ant-bg-container)" }}>
 								{/* Overview graph without System Config overlay */}
 								<DeploymentGraph />
@@ -311,10 +486,7 @@ export default function DeploymentDetail() {
 						</Panel>
 
 						{/* NEW: Platform Configuration panel moved here */}
-						<Panel
-							key="platform-configuration"
-							header={<div className="uppercase font-extrabold text-sm">Platform Configuration</div>}
-						>
+						<Panel key="platform-configuration" header={<div className="uppercase font-extrabold text-sm">Platform Configuration</div>}>
 							{/* PlatformConfig only — remove duplicate Export/Import/Edit controls here */}
 							<PlatformConfig
 								platform={details.platform}
@@ -327,33 +499,52 @@ export default function DeploymentDetail() {
 						</Panel>
 						
 						{/* renamed: Application Configuration (was "Configuration") */}
-						<Panel
-							key="application-configuration"
-							header={<div className="uppercase font-extrabold text-sm">Application Configuration</div>}
-						>
-							{editingDeployment ? (
-								<Form layout="vertical" initialValues={deploymentCfg} onValuesChange={(_, all) => setDeploymentCfg(all)}>
-									<Form.Item name="replicas" label="Replicas">
-										<Input />
-									</Form.Item>
-									<Form.Item name="strategy" label="Strategy">
-										<Input />
-									</Form.Item>
-									<Form.Item name="cpu" label="CPU">
-										<Input />
-									</Form.Item>
-									<Form.Item name="memory" label="Memory">
-										<Input />
-									</Form.Item>
-								</Form>
-							) : (
-								<Descriptions column={2} bordered>
-									<Descriptions.Item label="Replicas">{deploymentCfg.replicas}</Descriptions.Item>
-									<Descriptions.Item label="Strategy">{deploymentCfg.strategy}</Descriptions.Item>
-									<Descriptions.Item label="CPU">{deploymentCfg.cpu}</Descriptions.Item>
-									<Descriptions.Item label="Memory">{deploymentCfg.memory}</Descriptions.Item>
-								</Descriptions>
-							)}
+						<Panel key="application-configuration" header={<div className="uppercase font-extrabold text-sm">Application Configuration</div>} collapsible="icon">
+							<Collapse defaultActiveKey={["app-gateway"]} accordion={false}>
+								{appHierarchy.map((grp) => (
+									<Panel key={`app-${grp.key}`} header={<div className="font-bold">{grp.title}</div>} collapsible="icon">
+										<Collapse>
+											{grp.children.map((mod) => (
+												<Panel
+													key={`app-${grp.key}-${mod.key}`}
+													// CHANGED: custom header with docs "i" icon
+													header={
+														<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+															<span>{mod.label}</span>
+															<span
+																title="Open documentation"
+																role="button"
+																tabIndex={0}
+																onClick={(e) => { e.stopPropagation(); window.open(docUrl(mod.key), "_blank", "noopener"); }}
+																onMouseDown={(e) => e.stopPropagation()}
+																style={{
+																	display: "inline-flex",
+																	alignItems: "center",
+																	justifyContent: "center",
+																	width: 18,
+																	height: 18,
+																	borderRadius: 999,
+																	background: "#E2E8F0",
+																	color: "#334155",
+																	fontSize: 11,
+																	fontWeight: 700,
+																	border: "1px solid rgba(0,0,0,0.05)",
+																	cursor: "pointer",
+																}}
+															>
+																i
+															</span>
+														</div>
+													}
+													collapsible="icon"
+												>
+													<ModuleConfig id={mod.key} name={mod.label} group={grp.key} />
+												</Panel>
+											))}
+										</Collapse>
+									</Panel>
+								))}
+							</Collapse>
 						</Panel>
 					</Collapse>
 				</Card>
