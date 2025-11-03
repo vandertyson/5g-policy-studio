@@ -10,9 +10,9 @@ export default function AppLayout() {
 					<h2
 						style={{ fontSize: "clamp(1rem, 3.2vw, 1.25rem)" }}
 						className="font-extrabold leading-tight whitespace-nowrap truncate text-gray-900 dark:text-gray-100"
-						title="5G Studio Policy"
+						title="5G Policy Studio"
 					>
-						5G Studio Policy
+						5G Policy Studio
 					</h2>
 				</div>
 				<nav className="px-4">
