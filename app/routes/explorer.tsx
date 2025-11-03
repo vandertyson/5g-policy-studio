@@ -515,6 +515,31 @@ export default function Explorer() {
 
 	return (
 		<div className="p-6">
+			{/* NEW: dedicated scrollbar styles for the TOC area */}
+			<style>{`
+				.toc-scroll {
+					overflow: auto;
+					scrollbar-gutter: stable;
+					scrollbar-width: thin;                /* Firefox */
+					scrollbar-color: #94A3B8 #F1F5F9;     /* Firefox */
+				}
+				.toc-scroll::-webkit-scrollbar {
+					width: 10px;                          /* Chrome/Edge/Safari */
+				}
+				.toc-scroll::-webkit-scrollbar-track {
+					background: #F1F5F9;
+					border-radius: 8px;
+				}
+				.toc-scroll::-webkit-scrollbar-thumb {
+					background: #94A3B8;
+					border-radius: 8px;
+					border: 2px solid #F1F5F9;
+				}
+				.toc-scroll:hover::-webkit-scrollbar-thumb {
+					background: #64748B;
+				}
+			`}</style>
+
 			<div style={{ display: "flex", height: "100%", minHeight: "calc(100vh - 80px)" }}>
 				{/* Left nav (styled) */}
 				<aside
@@ -547,7 +572,8 @@ export default function Explorer() {
 						Contents
 					</div>
 					<Input.Search placeholder="Search content" allowClear onSearch={(v) => setQ(v)} onChange={(e) => setQ(e.target.value)} />
-					<div style={{ overflow: "auto", flex: 1 }}>
+					{/* CHANGED: add className to get a dedicated scrollbar only for the TOC list */}
+					<div className="toc-scroll" style={{ overflow: "auto", flex: 1 }}>
 						<Menu
 							mode="inline"
 							items={menuItems}
@@ -591,7 +617,7 @@ export default function Explorer() {
 
 							<img
 								alt="diagram"
-								src="https://dummyimage.com/960x220/e5e7eb/111827.png&text=Architecture+Overview"
+								src="https://www.3gpp.org/images/articleimages/architecture_image01v3b.jpg"
 								style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
 							/>
 
