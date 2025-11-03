@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Breadcrumb, Button, Card, Input, Menu, Space, Tag, Row, Col } from "antd";
+import { Breadcrumb, Button, Card, Input, Menu, Space, Tag, Select } from "antd";
 import {
 	BookOutlined,
 	ProjectOutlined,
@@ -227,6 +227,64 @@ const SectionHeader = ({ children }: { children: React.ReactNode }) => (
 	</div>
 );
 
+// NEW: derive sample API specs per module (demo only)
+type ApiSpec = { method: "GET" | "POST" | "PUT" | "DELETE"; path: string; summary?: string };
+function apiSpecsFor(modKey: string): ApiSpec[] {
+	if (modKey === "nwdaf-analytics-info")
+		return [
+			{ method: "GET", path: "/analytics/v1/info", summary: "List analytics info" },
+			{ method: "GET", path: "/analytics/v1/info/{id}", summary: "Get analytics by id" },
+			{ method: "POST", path: "/analytics/v1/query", summary: "Query analytics" },
+		];
+	if (modKey === "npcf-sm-policycontrol")
+		return [
+			{ method: "GET", path: "/pcf-sm/v1/policies", summary: "List SM policies" },
+			{ method: "POST", path: "/pcf-sm/v1/policies", summary: "Create SM policy" },
+			{ method: "GET", path: "/pcf-sm/v1/policies/{id}", summary: "Get SM policy" },
+		];
+	if (modKey.startsWith("npcf-am"))
+		return [
+			{ method: "GET", path: "/pcf-am/v1/policies", summary: "List AM policies" },
+			{ method: "POST", path: "/pcf-am/v1/policies", summary: "Create AM policy" },
+		];
+	// default generic endpoints
+	return [
+		{ method: "GET", path: `/${modKey}/v1/resources`, summary: "List resources" },
+		{ method: "POST", path: `/${modKey}/v1/resources`, summary: "Create resource" },
+		{ method: "GET", path: `/${modKey}/v1/resources/{id}`, summary: "Get resource" },
+	];
+}
+
+// NEW: small method tag for API list
+function MethodTag({ method }: { method: ApiSpec["method"] }) {
+	const color =
+		method === "GET" ? "#10B981" :
+		method === "POST" ? "#3B82F6" :
+		method === "PUT" ? "#F59E0B" :
+		"#EF4444";
+	return (
+		<span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 46, height: 22, borderRadius: 6, fontSize: 12, fontWeight: 800, color: "#fff", background: color }}>
+			{method}
+		</span>
+	);
+}
+
+// NEW: extract {param} names from path
+function parsePathParams(path: string): string[] {
+	const m = path.matchAll(/{([\w-]+)}/g);
+	return Array.from(m, (x) => x[1]);
+}
+
+// NEW: build final URL from base, path, params, query
+function buildUrl(base: string, path: string, params: Record<string, string>, query: string) {
+	let p = path.replace(/{([\w-]+)}/g, (_, key) => encodeURIComponent(params[key] ?? `{${key}}`));
+	if (query && query.trim().length > 0) {
+		const q = query.startsWith("?") ? query.slice(1) : query;
+		p = `${p}?${q}`;
+	}
+	return `${base}${p}`;
+}
+
 export default function Explorer() {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -236,11 +294,11 @@ export default function Explorer() {
 	const [q, setQ] = React.useState("");
 	const menuItems = React.useMemo(() => toMenuItems(HIERARCHY, q), [q]);
 
-	// NEW: default selection = Introduction/Overview
+	// default selection = Introduction/Overview
 	const defaultModule = "intro-overview";
 	const effectiveSelected = selected ?? defaultModule;
 
-	// manage collapsible state (open parent of effective selection)
+	// keep parent open
 	const [openKeys, setOpenKeys] = React.useState<string[]>([]);
 	React.useEffect(() => {
 		for (const g of HIERARCHY) {
@@ -251,27 +309,30 @@ export default function Explorer() {
 		}
 	}, [effectiveSelected]);
 
-	// derive selected module doc (always defined via effectiveSelected)
+	// current doc
 	const doc = React.useMemo(() => moduleDoc(effectiveSelected), [effectiveSelected]);
+
+	// CHANGED: only version selector remains in header actions
+	const [version, setVersion] = React.useState<string>("v2.1");
+	const versionOptions = React.useMemo(() => ["v2.1", "v2.0", "v1.9"].map(v => ({ label: v, value: v })), []);
 
 	return (
 		<div className="p-6">
 			<div style={{ display: "flex", height: "100%", minHeight: "calc(100vh - 80px)" }}>
-				{/* Left nav */}
+				{/* Left nav (styled) */}
 				<aside
 					style={{
 						width: 300,
 						borderRight: "1px solid #E5E7EB",
 						background: "#FFFFFF",
 						padding: 12,
-						borderRadius: 12,              // CHANGED: rounded
-						boxShadow: "0 4px 14px rgba(2,6,23,0.06)", // CHANGED: soft shadow
+						borderRadius: 12,
+						boxShadow: "0 4px 14px rgba(2,6,23,0.06)",
 						display: "flex",
 						flexDirection: "column",
 						gap: 10,
 					}}
 				>
-					{/* CHANGED: small "Contents" chip */}
 					<div
 						style={{
 							alignSelf: "flex-start",
@@ -298,43 +359,30 @@ export default function Explorer() {
 							selectedKeys={[effectiveSelected]}
 							onClick={(info) => {
 								if (!HIERARCHY.some((g) => g.key === info.key)) {
-									const sp = new URLSearchParams(location.search);
-									sp.set("module", info.key);
-									navigate(`/explorer?${sp.toString()}`);
+                                    const sp = new URLSearchParams(location.search);
+                                    sp.set("module", info.key);
+                                    navigate(`/explorer?${sp.toString()}`);
 								}
 							}}
-							// CHANGED: tighter indent and cleaner background
 							inlineIndent={18}
 							style={{ borderRight: 0, background: "transparent" }}
 						/>
 					</div>
 				</aside>
 
-				{/* Main content — always show module detail (default: Introduction/Overview) */}
+				{/* Main content — Documentation only */}
 				<main style={{ flex: 1, padding: 20, background: "#F8FAFC" }}>
-					<div style={{ maxWidth: 1100, margin: "0 auto" }}>
+					<div style={{ margin: "0 auto" }}>
+						{/* Header: breadcrumb + version select (only) */}
 						<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-							{/* CHANGED: breadcrumb root = Explorer */}
 							<Breadcrumb items={[{ title: "Explorer" }, { title: doc.group }, { title: doc.title }]} />
 							<Space>
-								<Button onClick={() => window.open("#", "_blank")}>API Explorer</Button>
-								<Button onClick={() => window.open("#", "_blank")}>Developer tutorials</Button>
-								<Button
-									onClick={() => {
-										// go back to default (Introduction/Overview)
-										const sp = new URLSearchParams(location.search);
-										sp.delete("module");
-										navigate(`/explorer?${sp.toString()}`);
-									}}
-								>
-									Back to Introduction
-								</Button>
+								<Select value={version} onChange={setVersion} options={versionOptions} style={{ width: 120 }} size="middle" />
 							</Space>
 						</div>
 
 						<Card>
 							<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-								{/* CHANGED: make main title more prominent */}
 								<h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0F172A" }}>{doc.title}</h1>
 								<Tag color="blue">Docs</Tag>
 							</div>
@@ -346,7 +394,6 @@ export default function Explorer() {
 								style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
 							/>
 
-							{/* CHANGED: highlighted section header */}
 							<SectionHeader>Key topics</SectionHeader>
 							<ul style={{ paddingLeft: 18, color: "#334155" }}>
 								{doc.bullets.map((b) => (
@@ -354,7 +401,6 @@ export default function Explorer() {
 								))}
 							</ul>
 
-							{/* CHANGED: highlighted section header */}
 							<SectionHeader>Resources</SectionHeader>
 							<Space wrap>
 								<Button type="link" href="#" target="_blank">Overview</Button>
@@ -362,9 +408,6 @@ export default function Explorer() {
 								<Button type="link" href="#" target="_blank">Operational Runbook</Button>
 							</Space>
 						</Card>
-
-						{/* Optional: keep Get started/Featured/Recent below if desired (omitted for brevity) */}
-						{/* ...existing code... */}
 					</div>
 				</main>
 			</div>
