@@ -441,6 +441,17 @@ export default function Explorer() {
 		}
 	}
 
+	// NEW: add OTP header helper
+	function addOtp() {
+		try {
+			const h = headersJson ? JSON.parse(headersJson) : {};
+			h["X-OTP"] = h["X-OTP"] || "<otp>";
+			setHeadersJson(JSON.stringify(h, null, 2));
+		} catch {
+			setHeadersJson(JSON.stringify({ "X-OTP": "<otp>" }, null, 2));
+		}
+	}
+
 	async function copyToClipboard(text: string) {
 		try {
 			await navigator.clipboard.writeText(text);
@@ -786,8 +797,12 @@ export default function Explorer() {
 											{/* Headers */}
 											<div style={{ display: "grid", gap: 6 }}>
 												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-													<div style={{ fontWeight: 700 }}>Headers (JSON)</div>
-													<Button size="small" onClick={addAccessToken}>Add access token</Button>
+													<div style={{ fontWeight: 700 }}>Headers</div>
+													<Space size={8}>
+														<Button size="small" onClick={addAccessToken}>Add access token</Button>
+														{/* NEW: Add OTP button */}
+														<Button size="small" onClick={addOtp}>Add OTP</Button>
+													</Space>
 												</div>
 												<Input.TextArea rows={4} value={headersJson} onChange={(e) => setHeadersJson(e.target.value)} />
 											</div>
@@ -795,7 +810,7 @@ export default function Explorer() {
 											{/* Body */}
 											<div style={{ display: "grid", gap: 6 }}>
 												<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-													<div style={{ fontWeight: 700 }}>Body</div>
+													<div style={{ fontWeight: 700 }}>Body (JSON)</div>
 													<Space size={8}>
 														<Button size="small" onClick={prettyBody} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"}>Pretty</Button>
 														<Button size="small" onClick={() => copyToClipboard(body)}>Copy</Button>
