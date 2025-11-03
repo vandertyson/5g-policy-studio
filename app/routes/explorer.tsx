@@ -285,6 +285,18 @@ function buildUrl(base: string, path: string, params: Record<string, string>, qu
 	return `${base}${p}`;
 }
 
+// NEW: quick deployment list to pick a base URL (mirrors Deployment screen)
+const MY_DEPLOYMENTS: 
+	{ id: string; name: string; platform: "kubernetes" | "mano" | "aws"; baseUrl: string }[] = [
+	{ id: "1", name: "vOCS-testbed", platform: "kubernetes", baseUrl: "https://kube.example.com" },
+	{ id: "2", name: "vOCS-1M", platform: "mano", baseUrl: "https://10.175.124.48:9000/" }, // example from prompt
+	{ id: "3", name: "BCTTLL",  platform: "mano", baseUrl: "https://mano.example.org" },
+	{ id: "4", name: "Germadept", platform: "aws", baseUrl: "https://ec2-3-85-123-45.compute-1.amazonaws.com:8080" }, // example from prompt
+	];
+
+// NEW: small required (*) mark
+const RequiredMark = () => <span style={{ color: "#EF4444", marginLeft: 4 }}>*</span>;
+
 export default function Explorer() {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -315,6 +327,118 @@ export default function Explorer() {
 	// CHANGED: only version selector remains in header actions
 	const [version, setVersion] = React.useState<string>("v2.1");
 	const versionOptions = React.useMemo(() => ["v2.1", "v2.0", "v1.9"].map(v => ({ label: v, value: v })), []);
+
+	// NEW: API Tool state based on current module
+	const specs = React.useMemo(() => apiSpecsFor(effectiveSelected), [effectiveSelected]);
+	const hasApi = specs.length > 0 && !effectiveSelected.includes("overview") && !effectiveSelected.startsWith("intro-");
+	const [apiOpen, setApiOpen] = React.useState(false);
+
+	// NEW: API Tool form state
+	const [selIdx, setSelIdx] = React.useState(0);
+	const currentSpec = specs[selIdx] ?? specs[0];
+	const [baseUrl, setBaseUrl] = React.useState("https://api.example.com");
+	const [method, setMethod] = React.useState<"GET" | "POST" | "PUT" | "DELETE">(currentSpec?.method ?? "GET");
+	const [pathParams, setPathParams] = React.useState<Record<string, string>>({});
+	const [query, setQuery] = React.useState("");
+	const [headersJson, setHeadersJson] = React.useState('{"Content-Type":"application/json"}');
+	const [body, setBody] = React.useState('{\n  "example": true\n}');
+	const [respStatus, setRespStatus] = React.useState<string>("");
+	const [respHeaders, setRespHeaders] = React.useState<string>("");
+	const [respBody, setRespBody] = React.useState<string>("");
+
+	// Reset tool when open or module changes
+	React.useEffect(() => {
+		setSelIdx(0);
+		setBaseUrl("https://api.example.com");
+		setMethod(currentSpec?.method ?? "GET");
+		setPathParams({});
+		setQuery("");
+		setHeadersJson('{"Content-Type":"application/json"}');
+		setBody('{\n  "example": true\n}');
+		setRespStatus("");
+		setRespHeaders("");
+		setRespBody("");
+	}, [effectiveSelected, apiOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	React.useEffect(() => {
+		setMethod(currentSpec?.method ?? "GET");
+	}, [selIdx]); // keep method in sync with selected spec
+
+	async function sendToolRequest() {
+		try {
+			setRespStatus("Requesting...");
+			setRespHeaders("");
+			setRespBody("");
+			const finalUrl = buildUrl(baseUrl, currentSpec?.path ?? "/", pathParams, query);
+			let headers: Record<string, string> = {};
+			try { headers = headersJson ? JSON.parse(headersJson) : {}; } catch {}
+			const init: RequestInit = { method, headers };
+			if (method !== "GET" && body) init.body = body;
+			const res = await fetch(finalUrl, init);
+			setRespStatus(`${res.status} ${res.statusText}`);
+			const hs: string[] = [];
+			res.headers.forEach((v, k) => hs.push(`${k}: ${v}`));
+			setRespHeaders(hs.join("\n"));
+			const text = await res.text();
+			setRespBody(text);
+		} catch (e: any) {
+			setRespStatus("Request failed");
+			setRespHeaders("");
+			setRespBody(String(e?.message ?? e));
+		}
+	}
+
+	// helpers for API Tool actions
+	const currentUrl = React.useMemo(
+		() => buildUrl(baseUrl, currentSpec?.path ?? "/", pathParams, query),
+		[baseUrl, currentSpec?.path, pathParams, query]
+	);
+
+	function prettyBody() {
+		try {
+			const parsed = JSON.parse(body);
+			setBody(JSON.stringify(parsed, null, 2));
+		} catch {
+			// ignore if not JSON
+		}
+	}
+
+	function addAccessToken() {
+		try {
+			const h = headersJson ? JSON.parse(headersJson) : {};
+			h.Authorization = h.Authorization || "Bearer <token>";
+			setHeadersJson(JSON.stringify(h, null, 2));
+		} catch {
+			setHeadersJson(JSON.stringify({ Authorization: "Bearer <token>" }, null, 2));
+		}
+	}
+
+	async function copyToClipboard(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			// ignore
+		}
+	}
+
+	function toCurl(): string {
+		const parts: string[] = [];
+		parts.push(`curl -X ${method} ${JSON.stringify(currentUrl)}`);
+		try {
+			const h = headersJson ? JSON.parse(headersJson) as Record<string, string> : {};
+			Object.entries(h).forEach(([k, v]) => parts.push(`-H ${JSON.stringify(`${k}: ${v}`)}`));
+		} catch {
+			// ignore invalid headers
+		}
+		if ((specs[selIdx]?.method ?? currentSpec?.method) !== "GET" && body?.trim()) {
+			parts.push(`--data-raw ${JSON.stringify(body)}`);
+		}
+		return parts.join(" ");
+	}
+
+	function exportCurl() {
+		copyToClipboard(toCurl());
+	}
 
 	return (
 		<div className="p-6">
@@ -371,12 +495,17 @@ export default function Explorer() {
 				</aside>
 
 				{/* Main content — Documentation only */}
-				<main style={{ flex: 1, padding: 20, background: "#F8FAFC" }}>
+				<main style={{ flex: 1, padding: 20, background: "#F8FAFC", position: "relative" }}>
 					<div style={{ margin: "0 auto" }}>
-						{/* Header: breadcrumb + version select (only) */}
+						{/* Header: breadcrumb + version select + API Testing */}
 						<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
 							<Breadcrumb items={[{ title: "Explorer" }, { title: doc.group }, { title: doc.title }]} />
 							<Space>
+								{hasApi ? (
+									<Button type="primary" onClick={() => setApiOpen((v) => !v)}>
+										API Testing
+									</Button>
+								) : null}
 								<Select value={version} onChange={setVersion} options={versionOptions} style={{ width: 120 }} size="middle" />
 							</Space>
 						</div>
@@ -409,6 +538,194 @@ export default function Explorer() {
 							</Space>
 						</Card>
 					</div>
+
+					{/* NEW: API Tool — right collapsible sidebar */}
+					{apiOpen ? (
+						<div
+							style={{
+								position: "fixed",
+								right: 16,
+								top: 86, // account for page padding/header
+								bottom: 16,
+								width: 440,
+								background: "#FFFFFF",
+								border: "1px solid #E5E7EB",
+								borderRadius: 12,
+								boxShadow: "0 10px 30px rgba(2,6,23,0.16)",
+								zIndex: 1000,
+								display: "flex",
+								flexDirection: "column",
+								overflow: "hidden",
+							}}
+						>
+							{/* Tool header */}
+							<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderBottom: "1px solid #E5E7EB", background: "#F8FAFC" }}>
+								<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+									<span style={{ fontWeight: 900, fontSize: 14, textTransform: "uppercase", letterSpacing: 0.4 }}>API Tool</span>
+									<span style={{ color: "#64748B" }}>· {doc.title}</span>
+								</div>
+								<Button size="small" onClick={() => setApiOpen(false)}>Close</Button>
+							</div>
+
+							{/* Tool body */}
+							<div style={{ padding: 12, overflow: "auto", display: "grid", gap: 10 }}>
+								{/* Endpoint select */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ fontWeight: 700 }}>Endpoint</div>
+									<Select
+										value={selIdx}
+										onChange={(v) => setSelIdx(v)}
+										optionLabelProp="label"
+										style={{ width: "100%" }}
+										options={specs.map((s, i) => ({
+											value: i,
+											label: `${s.method} ${s.path}`,
+											// custom render
+											title: s.summary ?? "",
+										}))}
+									/>
+									<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+										<MethodTag method={currentSpec?.method ?? "GET"} />
+										<div style={{ fontFamily: "monospace", fontSize: 12, color: "#0F172A" }}>{currentSpec?.path}</div>
+									</div>
+									{currentSpec?.summary ? <div style={{ color: "#64748B", fontSize: 12 }}>{currentSpec.summary}</div> : null}
+								</div>
+
+								{/* Deployment selector — label on its own line + required mark */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ fontWeight: 700 }}>Deployment<RequiredMark /></div>
+									<Select
+										placeholder="Select from my deployment"
+										style={{ width: "100%" }}
+										optionLabelProp="label"
+										options={MY_DEPLOYMENTS.map((d) => ({
+											value: d.id,
+											label: `${d.name} (${d.platform})`,
+											title: d.baseUrl,
+											children: (
+												<div style={{ display: "flex", flexDirection: "column" }}>
+													<span style={{ fontWeight: 600 }}>
+														{d.name} <Tag style={{ marginLeft: 6 }}>{d.platform.toUpperCase()}</Tag>
+													</span>
+													<span style={{ color: "#64748B", fontSize: 12 }}>{d.baseUrl}</span>
+												</div>
+											),
+										}))}
+										dropdownRender={(menu) => (
+											<div style={{ padding: 8 }}>
+												<div style={{ fontWeight: 800, marginBottom: 6 }}>My Deployments</div>
+												{menu}
+											</div>
+										)}
+										onChange={(id: string) => {
+											const dep = MY_DEPLOYMENTS.find((x) => x.id === id);
+											if (dep) setBaseUrl(dep.baseUrl);
+										}}
+									/>
+								</div>
+
+								{/* URL label + copy, then URL value */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+										<div style={{ fontWeight: 700 }}>URL</div>
+										<Button size="small" onClick={() => copyToClipboard(currentUrl)}>Copy</Button>
+									</div>
+									<pre
+										style={{
+											margin: 0,
+											background: "#F8FAFC",
+											border: "1px solid #E5E7EB",
+											borderRadius: 8,
+											padding: "8px 10px",
+											fontFamily: "monospace",
+											fontSize: 12,
+											whiteSpace: "pre-wrap",
+											wordBreak: "break-all",
+										}}
+									>
+										{currentUrl}
+									</pre>
+								</div>
+
+								{/* Path params */}
+								{(() => {
+									const names = parsePathParams(currentSpec?.path ?? "");
+									if (names.length === 0) return null;
+									return (
+										<div style={{ display: "grid", gap: 6 }}>
+											<div style={{ fontWeight: 700 }}>Path Parameters</div>
+											{names.map((n) => (
+												<div key={n} style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 8, alignItems: "center" }}>
+													<label style={{ color: "#475569" }}>
+														{n}
+														<RequiredMark />
+													</label>
+													<Input
+														value={pathParams[n] ?? ""}
+														onChange={(e) => setPathParams((p) => ({ ...p, [n]: e.target.value }))}
+														placeholder={`Enter ${n}`}
+													/>
+												</div>
+											))}
+										</div>
+									);
+								})()}
+
+								{/* Query string */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ fontWeight: 700 }}>Query (key=value&...)</div>
+									<Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. type=active&limit=10" />
+								</div>
+
+								{/* Headers with 'Add access token' */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+										<div style={{ fontWeight: 700 }}>Headers (JSON)</div>
+										<Button size="small" onClick={addAccessToken}>Add access token</Button>
+									</div>
+									<Input.TextArea rows={4} value={headersJson} onChange={(e) => setHeadersJson(e.target.value)} />
+								</div>
+
+								{/* Body with Pretty/Copy */}
+								<div style={{ display: "grid", gap: 6 }}>
+									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+										<div style={{ fontWeight: 700 }}>Body</div>
+										<Space size={8}>
+											<Button size="small" onClick={prettyBody} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"}>Pretty</Button>
+											<Button size="small" onClick={() => copyToClipboard(body)}>Copy</Button>
+										</Space>
+									</div>
+									<Input.TextArea rows={6} value={body} onChange={(e) => setBody(e.target.value)} disabled={(specs[selIdx]?.method ?? currentSpec?.method) === "GET"} />
+								</div>
+
+								{/* Send + Export cURL */}
+								<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+									<Button onClick={exportCurl}>Export cURL</Button>
+									<Button type="primary" onClick={sendToolRequest}>Send</Button>
+								</div>
+
+								{/* Response */}
+								<div style={{ display: "grid", gap: 8 }}>
+									<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+										<div style={{ fontWeight: 800 }}>Response</div>
+										<Tag color={respStatus.startsWith("2") ? "green" : respStatus ? "red" : "default"}>{respStatus || "—"}</Tag>
+									</div>
+									<div>
+										<div style={{ fontWeight: 700, marginBottom: 6 }}>Headers</div>
+										<pre style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: 8, minHeight: 90, whiteSpace: "pre-wrap" }}>
+											{respHeaders || "—"}
+										</pre>
+									</div>
+									<div>
+										<div style={{ fontWeight: 700, marginBottom: 6 }}>Body</div>
+										<pre style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: 8, minHeight: 140, whiteSpace: "pre-wrap", overflowX: "auto" }}>
+											{respBody || "—"}
+										</pre>
+									</div>
+								</div>
+							</div>
+						</div>
+					) : null}
 				</main>
 			</div>
 		</div>
