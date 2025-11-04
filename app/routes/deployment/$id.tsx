@@ -376,15 +376,19 @@ export default function DeploymentDetail() {
 			title: "Metadata",
 			content: (
 				<Card>
-					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-						{editingMeta ? (
-							<Space>
-								<Button onClick={cancelMeta}>Cancel</Button>
-								<Button type="primary" onClick={saveMeta}>Save</Button>
-							</Space>
-						) : (
-							<Button onClick={() => setEditingMeta(true)}>Edit</Button>
-						)}
+					{/* CHANGED: add PlatformBadge on the left, controls on the right */}
+					<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+						<PlatformBadge platform={details.platform} />
+						<div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+							{editingMeta ? (
+								<Space>
+									<Button onClick={cancelMeta}>Cancel</Button>
+									<Button type="primary" onClick={saveMeta}>Save</Button>
+								</Space>
+							) : (
+								<Button onClick={() => setEditingMeta(true)}>Edit</Button>
+							)}
+						</div>
 					</div>
 
 					{editingMeta ? (
@@ -499,48 +503,47 @@ export default function DeploymentDetail() {
 						</Panel>
 						
 						{/* renamed: Application Configuration (was "Configuration") */}
-						<Panel key="application-configuration" header={<div className="uppercase font-extrabold text-sm">Application Configuration</div>} collapsible="icon">
+						<Panel key="application-configuration" header={<div className="uppercase font-extrabold text-sm">Application Configuration</div>} collapsible="header">
 							<Collapse defaultActiveKey={["app-gateway"]} accordion={false}>
 								{appHierarchy.map((grp) => (
-									<Panel key={`app-${grp.key}`} header={<div className="font-bold">{grp.title}</div>} collapsible="icon">
+									<Panel key={`app-${grp.key}`} header={<div className="font-bold">{grp.title}</div>} collapsible="header">
 										<Collapse>
 											{grp.children.map((mod) => (
 												<Panel
 													key={`app-${grp.key}-${mod.key}`}
-													// CHANGED: custom header with docs "i" icon
-													header={
-														<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-															<span>{mod.label}</span>
-															<span
-																title="Open documentation"
-																role="button"
-																tabIndex={0}
-																onClick={(e) => { e.stopPropagation(); window.open(docUrl(mod.key), "_blank", "noopener"); }}
-																onMouseDown={(e) => e.stopPropagation()}
-																style={{
-																	display: "inline-flex",
-																	alignItems: "center",
-																	justifyContent: "center",
-																	width: 18,
-																	height: 18,
-																	borderRadius: 999,
-																	background: "#E2E8F0",
-																	color: "#334155",
-																	fontSize: 11,
-																	fontWeight: 700,
-																	border: "1px solid rgba(0,0,0,0.05)",
-																	cursor: "pointer",
-																}}
-															>
-																i
-															</span>
-														</div>
-													}
-													collapsible="icon"
-												>
-													<ModuleConfig id={mod.key} name={mod.label} group={grp.key} />
-												</Panel>
-											))}
+													// CHANGED: custom header with docs "i" icon; header remains clickable
+ 													header={
+ 														<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+ 															<span>{mod.label}</span>
+ 															<span
+ 																title="Open documentation"
+ 																role="button"
+ 																tabIndex={0}
+ 																onClick={(e) => { e.stopPropagation(); window.open(docUrl(mod.key), "_blank", "noopener"); }}
+ 																onMouseDown={(e) => e.stopPropagation()}
+ 																style={{
+ 																	display: "inline-flex",
+ 																	alignItems: "center",
+ 																	justifyContent: "center",
+ 																	width: 18,
+ 																	height: 18,
+ 																	borderRadius: 999,
+ 																	background: "#E2E8F0",
+ 																	color: "#334155",
+ 																	fontSize: 11,
+ 																	fontWeight: 700,
+ 																	border: "1px solid rgba(0,0,0,0.05)",
+ 																	cursor: "pointer",
+ 																}}
+ 															>
+ 																i
+ 															</span>
+ 														</div>
+ 													}
+ 												>
+ 													<ModuleConfig id={mod.key} name={mod.label} group={grp.key} />
+ 												</Panel>
+ 											))}
 										</Collapse>
 									</Panel>
 								))}
