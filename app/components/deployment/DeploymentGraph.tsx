@@ -220,6 +220,7 @@ export default function DeploymentGraph() {
 		{ id: "ims", name: "IMS", ip: "10.20.30.31:8104", active: false },
 		{ id: "nwdaf", name: "NWDAF", ip: "10.20.30.31:8105", active: true },
 		{ id: "chf", name: "CHF", ip: "10.20.30.31:8105", active: false },
+		{ id: "udr", name: "UDR", ip: "10.20.30.31:8220", active: false },
 	];
 
 	// External NFs container and tile positions (single row)
