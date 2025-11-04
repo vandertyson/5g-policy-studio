@@ -204,6 +204,7 @@ export default function DeploymentDetail() {
 			case "npcf-ue-policycontrol": return "UE";
 			case "npcf-policy-authorization": return "PCF";
 			case "nwdaf-analytics-info": return "NWDAF";
+			case "nudr-subscription-info": return "UDR";
 			default: return "-";
 		}
 	};
@@ -329,6 +330,7 @@ export default function DeploymentDetail() {
 				{ key: "npcf-mbs-policycontrol", label: "npcf-mbs-policycontrol" },
 				{ key: "nchf-spending-limit", label: "nchf-spending-limit" },
 				{ key: "nwdaf-analytics-info", label: "nwdaf-analytics-info" },
+				{ key: "nudr-subscription-info", label: "nudr-subscription-info" },
 			],
 		},
 		{

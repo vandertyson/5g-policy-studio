@@ -11,6 +11,7 @@ import {
 	DatabaseOutlined,
 	TeamOutlined,
 	BulbOutlined,
+	CloseOutlined,
 } from "@ant-design/icons";
 
 type Mod = { key: string; label: string };
@@ -63,16 +64,17 @@ const HIERARCHY: Group[] = [
 		title: "Gateway",
 		children: [
 			{ key: "gateway-overview", label: "Overview" },
-			{ key: "npcf-sm-policycontrol", label: "npcf-sm-policycontrol" },
-			{ key: "npcf-am-policycontrol", label: "npcf-am-policycontrol" },
-			{ key: "npcf-ue-policycontrol", label: "npcf-ue-policycontrol" },
-			{ key: "npcf-policy-authorization", label: "npcf-policy-authorization" },
-			{ key: "npcf-event-exposure", label: "npcf-event-exposure" },
-			{ key: "npcf-pdtq-policycontrol", label: "npcf-pdtq-policycontrol" },
-			{ key: "npcf-bdt-policycontrol", label: "npcf-bdt-policycontrol" },
-			{ key: "npcf-mbs-policycontrol", label: "npcf-mbs-policycontrol" },
-			{ key: "nchf-spending-limit", label: "nchf-spending-limit" },
-			{ key: "nwdaf-analytics-info", label: "nwdaf-analytics-info" },
+			{ key: "npcf-sm-policycontrol", label: "Session Management" },
+			{ key: "npcf-am-policycontrol", label: "Access and Mobility" },
+			{ key: "npcf-ue-policycontrol", label: "UE Policy" },
+			{ key: "npcf-policy-authorization", label: "Policy Authorization" },
+			{ key: "npcf-event-exposure", label: "Event Exposure" },
+			{ key: "npcf-pdtq-policycontrol", label: "Planned Data Transfer with QoS" },
+			{ key: "npcf-bdt-policycontrol", label: "Background Data Transfer" },
+			{ key: "npcf-mbs-policycontrol", label: "Multicast/Broadcast" },
+			{ key: "nchf-spending-limit", label: "Spending Limit" },
+			{ key: "nwdaf-analytics-info", label: "NWDAF Analytics" },
+			{ key: "nudr-subscription-info", label: "NUDR Subscription" },
 		],
 	},
 	{
@@ -347,8 +349,21 @@ export default function Explorer() {
 	const doc = React.useMemo(() => moduleDoc(effectiveSelected), [effectiveSelected]);
 
 	// CHANGED: only version selector remains in header actions
-	const [version, setVersion] = React.useState<string>("v2.1");
-	const versionOptions = React.useMemo(() => ["v2.1", "v2.0", "v1.9"].map(v => ({ label: v, value: v })), []);
+	// Strongly type supported versions to fix TS index error
+	const VERSIONS = ["v2.1", "v2.0", "v1.9"] as const;
+	type Version = typeof VERSIONS[number];
+	const [version, setVersion] = React.useState<Version>("v2.1");
+	const versionOptions = React.useMemo(() => VERSIONS.map(v => ({ label: v, value: v })), []);
+	// NEW: last update info per version
+	const VERSION_LAST_UPDATE = React.useMemo<Record<Version, string>>(() => ({
+		"v2.1": "2025-10-11 09:32Z",
+		"v2.0": "2025-09-02 16:10Z",
+		"v1.9": "2025-07-22 08:05Z",
+	}), []);
+	const [lastUpdate, setLastUpdate] = React.useState<string>(VERSION_LAST_UPDATE[version] ?? "");
+	React.useEffect(() => {
+		setLastUpdate(VERSION_LAST_UPDATE[version] ?? "");
+	}, [version, VERSION_LAST_UPDATE]);
 
 	// NEW: API Tool state based on current module
 	const specs = React.useMemo(() => apiSpecsFor(effectiveSelected), [effectiveSelected]);
@@ -524,6 +539,14 @@ export default function Explorer() {
 		}
 	}
 
+	// NEW: only show DevTools button for non-overview docs and not in Introduction/Core Concept
+	const showOpenDev = React.useMemo(() => {
+		const groupKey = findGroupByMod(effectiveSelected)?.key ?? "";
+		const isOverview = effectiveSelected.includes("overview");
+		const isIntroOrConcept = groupKey === "introduction" || groupKey === "core-concept";
+		return !apiOpen && !isOverview && !isIntroOrConcept;
+	}, [effectiveSelected, apiOpen]);
+
 	return (
 		<div className="p-6">
 			{/* NEW: dedicated scrollbar styles for the TOC area */}
@@ -607,46 +630,63 @@ export default function Explorer() {
 				{/* Main content — Documentation only */}
 				<main style={{ flex: 1, padding: 20, background: "#F8FAFC", position: "relative" }}>
 					<div style={{ margin: "0 auto" }}>
-						{/* Header: breadcrumb + version select + Developer Tools */}
+						{/* Header: breadcrumb + version select; remove DevTools button here */}
 						<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-							<Breadcrumb items={[{ title: "Explorer" }, { title: doc.group }, { title: doc.title }]} />
-							<Space>
-								{/* CHANGED: rename to Developer Tools and always show */}
-								<Button type="primary" onClick={() => setApiOpen((v) => !v)}>
-									Developer Tools
-								</Button>
-								<Select value={version} onChange={setVersion} options={versionOptions} style={{ width: 120 }} size="middle" />
-							</Space>
-						</div>
+		<Breadcrumb items={[{ title: "Explorer" }, { title: doc.group }, { title: doc.title }]} />
+		<Space size={12} align="center">
+			<span style={{ fontWeight: 700, color: "#0F172A" }}>Version</span>
+			<Select
+				value={version}
+				onChange={(v) => { setVersion(v); /* lastUpdate updated by effect */ }}
+				options={versionOptions}
+				style={{ width: 120 }}
+				size="middle"
+			/>
+			<span style={{ color: "#64748B" }}>
+				Last update: <span style={{ fontWeight: 600, color: "#0F172A" }}>{lastUpdate || "—"}</span>
+			</span>
+		</Space>
+</div>
 
-						<Card>
-							<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-								<h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0F172A" }}>{doc.title}</h1>
-								<Tag color="blue">Docs</Tag>
-							</div>
-							<div style={{ color: "#475569", marginBottom: 16 }}>{doc.intro}</div>
+<Card>
+	{/* absolute button at top-right of content card */}
+	<div style={{ position: "relative" }}>
+		{showOpenDev && (
+			<Button
+				type="primary"
+				onClick={() => setApiOpen(true)}
+				style={{ position: "absolute", top: 12, right: 12, zIndex: 2 }}
+			>
+				Open in Developer Tools
+			</Button>
+		)}
+		<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, paddingRight: 180 }}>
+			<h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0F172A" }}>{doc.title}</h1>
+			<Tag color="blue">Docs</Tag>
+		</div>
+		<div style={{ color: "#475569", marginBottom: 16 }}>{doc.intro}</div>
 
-							<img
-								alt="diagram"
-								src="https://www.3gpp.org/images/articleimages/architecture_image01v3b.jpg"
-								style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
-							/>
+		<img
+			alt="diagram"
+			src="https://www.3gpp.org/images/articleimages/architecture_image01v3b.jpg"
+			style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
+		/>
 
-							<SectionHeader>Key topics</SectionHeader>
-							<ul style={{ paddingLeft: 18, color: "#334155" }}>
-								{doc.bullets.map((b) => (
-									<li key={b} style={{ lineHeight: "22px" }}>{b}</li>
-								))}
-							</ul>
+		<SectionHeader>Key topics</SectionHeader>
+		<ul style={{ paddingLeft: 18, color: "#334155" }}>
+			{doc.bullets.map((b) => (
+				<li key={b} style={{ lineHeight: "22px" }}>{b}</li>
+			))}
+		</ul>
 
-							<SectionHeader>Resources</SectionHeader>
-							<Space wrap>
-								<Button type="link" href="#" target="_blank">Overview</Button>
-								<Button type="link" href="#" target="_blank">Configuration Guide</Button>
-								<Button type="link" href="#" target="_blank">Operational Runbook</Button>
-							</Space>
-						</Card>
-					</div>
+		<SectionHeader>Resources</SectionHeader>
+		<Space wrap>
+			<Button type="link" href="#" target="_blank">Overview</Button>
+			<Button type="link" href="#" target="_blank">Configuration Guide</Button>
+			<Button type="link" href="#" target="_blank">Operational Runbook</Button>
+		</Space>
+	</div>
+</Card>
 
 					{/* Right sidebar tool with tabs */}
 					{apiOpen ? (
@@ -668,12 +708,22 @@ export default function Explorer() {
 							}}
 						>
 							{/* Tool header */}
-							<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderBottom: "1px solid #E5E7EB", background: "#F8FAFC" }}>
-								<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-									<span style={{ fontWeight: 900, fontSize: 18, textTransform: "uppercase", letterSpacing: 0.4 }}>Developer Tools</span>
-									<span style={{ color: "#64748B" }}>· {doc.title}</span>
+							<div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", background: "#F8FAFC" }}>
+								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+									<span style={{ fontWeight: 900, fontSize: 18, textTransform: "uppercase", letterSpacing: 0.4 }}>
+										Developer Tools
+									</span>
+									<Button
+										type="text"
+										size="small"
+										aria-label="Close"
+										onClick={() => setApiOpen(false)}
+										icon={<CloseOutlined />}
+									/>
 								</div>
-								<Button size="small" onClick={() => setApiOpen(false)}>Close</Button>
+								<div style={{ marginTop: 4, color: "#64748B", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+									{doc.title}
+								</div>
 							</div>
 
 							<div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -953,8 +1003,10 @@ export default function Explorer() {
 							</div>
 						</div>
 					) : null}
-				</main>
-			</div>
+				</div>
+			</main>
+			{/* ...existing code... */}
 		</div>
+	</div>
 	);
 }
