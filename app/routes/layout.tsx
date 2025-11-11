@@ -24,7 +24,7 @@ export default function AppLayout() {
 	return (
 		<div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
 			<aside 
-				className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col`}
+				className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col h-screen sticky top-0`}
 				style={{
 					background: 'linear-gradient(to bottom, #f3f4f6, #d1d5db)',
 				}}
@@ -41,7 +41,7 @@ export default function AppLayout() {
 						{isCollapsed ? '5G' : '5G Policy Studio'}
 					</h2>
 				</div>
-				<nav className="px-4 flex-1">
+				<nav className="px-4 flex-1 overflow-y-auto">
 					<ul className="space-y-1">
 						{menuItems.map((item) => (
 							<li key={item.to}>
