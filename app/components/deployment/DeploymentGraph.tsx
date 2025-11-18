@@ -5,10 +5,12 @@ import ReactFlow, {
 	Controls,
 	MiniMap,
 	Position,
-	Handle
+	Handle,
+	useReactFlow
 } from "reactflow";
 import type { Edge, Node } from "reactflow";
 import 'reactflow/dist/style.css';
+import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 
 // Small gold star icon
 function StarIcon({ size = 12 }: { size?: number }) {
@@ -171,6 +173,8 @@ type DeploymentGraphSummary = {
 };
 
 export default function DeploymentGraph() {
+	const [isFullscreen, setIsFullscreen] = React.useState(false);
+	
 	// layout helpers
 	// Increase base sizes and gaps a bit
 	const CELL_W = 200;
@@ -640,7 +644,14 @@ export default function DeploymentGraph() {
 	React.useEffect(() => {
 		if (!ctx) return;
 		const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeMenu();
-		const onDown = () => closeMenu();
+		const onDown = (e: MouseEvent) => {
+			// Don't close if clicking on the menu itself
+			const target = e.target as HTMLElement;
+			if (target.closest('[data-context-menu]')) {
+				return;
+			}
+			closeMenu();
+		};
 		document.addEventListener("keydown", onKey);
 		document.addEventListener("mousedown", onDown, true);
 		return () => {
@@ -702,8 +713,60 @@ export default function DeploymentGraph() {
 		setCtx({ x: e.clientX, y: e.clientY, ...m });
 	}, []);
 
+	// Toggle fullscreen
+	const toggleFullscreen = React.useCallback(() => {
+		setIsFullscreen(prev => !prev);
+	}, []);
+
 	return (
-		<div style={{ width: "100%", height: "100%", position: "relative" }}>
+		<div 
+			style={{ 
+				width: "100%", 
+				height: "100%", 
+				position: isFullscreen ? "fixed" : "relative",
+				top: isFullscreen ? 0 : undefined,
+				left: isFullscreen ? 0 : undefined,
+				right: isFullscreen ? 0 : undefined,
+				bottom: isFullscreen ? 0 : undefined,
+				zIndex: isFullscreen ? 50000 : undefined,
+				background: isFullscreen ? "#FFFFFF" : "transparent"
+			}}
+		>
+			{/* Fullscreen toggle button */}
+			<button
+				onClick={toggleFullscreen}
+				onMouseDown={(e) => e.stopPropagation()}
+				style={{
+					position: "absolute",
+					top: 10,
+					right: 10,
+					zIndex: 10,
+					width: 32,
+					height: 32,
+					borderRadius: 6,
+					border: "1px solid #E5E7EB",
+					background: "#FFFFFF",
+					color: "#475569",
+					cursor: "pointer",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+					transition: "all 0.2s"
+				}}
+				title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+				onMouseEnter={(e) => {
+					e.currentTarget.style.background = "#F3F4F6";
+					e.currentTarget.style.borderColor = "#D1D5DB";
+				}}
+				onMouseLeave={(e) => {
+					e.currentTarget.style.background = "#FFFFFF";
+					e.currentTarget.style.borderColor = "#E5E7EB";
+				}}
+			>
+				{isFullscreen ? <FullscreenExitOutlined style={{ fontSize: 16 }} /> : <FullscreenOutlined style={{ fontSize: 16 }} />}
+			</button>
+			
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
@@ -713,13 +776,14 @@ export default function DeploymentGraph() {
 				nodeTypes={nodeTypes}
 				nodesDraggable={false}
 				nodesConnectable={false}
-				elementsSelectable={false}
+				elementsSelectable={true}
 				panOnScroll
 				panOnDrag
 				zoomOnScroll
 				onNodeContextMenu={onNodeContextMenu}
 				onPaneClick={closeMenu}
-				onPaneContextMenu={(e) => e.preventDefault()}>
+				onPaneContextMenu={(e) => e.preventDefault()}
+			>
 				<Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#E2E8F0" />
 				<MiniMap nodeColor={() => "#CBD5E1"} nodeStrokeColor="#94A3B8" maskColor="rgba(15, 23, 42, 0.04)" pannable />
 				<Controls />
@@ -728,12 +792,13 @@ export default function DeploymentGraph() {
 			{/* NEW: popup_info styled context menu */}
 			{ctx ? (
 				<div
+					data-context-menu
 					style={{
 						position: "fixed",
 						left: ctx.x,
 						top: ctx.y,
 						transform: "translate(8px, 8px)",
-						zIndex: 10000,
+						zIndex: 60000,
 						background: "#FFFFFF",
 						color: "#0F172A",
 						border: "1px solid #E5E7EB",
