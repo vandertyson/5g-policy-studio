@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { 
 	AppstoreOutlined, 
 	TableOutlined, 
@@ -56,14 +57,14 @@ const mockPolicies = [
 ];
 
 export default function Designer() {
+	const navigate = useNavigate();
 	const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 	const [selectedPolicy, setSelectedPolicy] = useState(mockPolicies[0]);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [filterMode, setFilterMode] = useState<'all' | 'active' | 'draft' | 'favorite'>('all');
 
 	const handleEdit = (policyId: number) => {
-		console.log('Edit policy:', policyId);
-		// TODO: Implement edit functionality
+		navigate(`/designer/${policyId}`);
 	};
 
 	const handleDelete = (policyId: number) => {
@@ -197,11 +198,14 @@ export default function Designer() {
 						{/* Grid View - Left Side */}
 						<div className="flex-1 p-6 overflow-y-auto">
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-								{filteredPolicies.map((policy) => (
+								{mockPolicies.map((policy) => (
 									<div
 										key={policy.id}
-										onClick={() => setSelectedPolicy(policy)}
-										className={`bg-white dark:bg-gray-800 rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-lg relative ${
+										onClick={() => {
+											setSelectedPolicy(policy);
+										}}
+										onDoubleClick={() => navigate(`/designer/${policy.id}`)}
+										className={`bg-white dark:bg-gray-800 rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-lg ${
 											selectedPolicy?.id === policy.id
 												? 'border-blue-600 shadow-md'
 												: 'border-gray-200 dark:border-gray-700'
@@ -384,7 +388,8 @@ export default function Designer() {
 									{filteredPolicies.map((policy) => (
 										<tr
 											key={policy.id}
-											className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+											className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+											onDoubleClick={() => navigate(`/designer/${policy.id}`)}
 										>
 											<td className="px-6 py-4 whitespace-nowrap">
 												<button
