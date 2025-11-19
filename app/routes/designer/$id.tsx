@@ -80,8 +80,8 @@ export default function PolicyDetail() {
 	const policy = id ? mockPoliciesData[id] : null;
 	
 	// Flow management state
-	const [selectedFlowId, setSelectedFlowId] = useState<string>('flow-1');
-	const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(mockFlowsData['flow-1']);
+	const [selectedFlowId, setSelectedFlowId] = useState<string>('sm-policy-association');
+	const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(mockFlowsData['sm-policy-association']);
 	
 	// Selection states for properties panel
 	const [selectedProcessNode, setSelectedProcessNode] = useState<any>(null);
@@ -208,54 +208,109 @@ export default function PolicyDetail() {
 			{/* Main Content */}
 			<div className="flex-1 flex overflow-hidden">
 				{/* Flow List Sidebar - Left */}
-				<div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+				<div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
 					<div className="p-4">
-						<div className="flex items-center justify-between mb-4">
-							<h3 className="font-semibold text-gray-900">Flows</h3>
-							<Button
-								type="primary"
-								size="small"
-								icon={<PlusOutlined />}
-								onClick={handleCreateFlow}
-							>
-								New
-							</Button>
+						<div className="bg-blue-600 text-white p-3 -mx-4 -mt-4 mb-4 flex items-center justify-center">
+							<h3 className="font-semibold text-base">Flow Collection</h3>
 						</div>
 						
-						<List
-							size="small"
-							dataSource={mockFlows}
-							renderItem={(flow) => (
-								<List.Item
-									className={`cursor-pointer transition-all rounded-lg mb-2 ${
-										selectedFlowId === flow.id
-											? 'bg-blue-50 border-2 border-blue-400'
-											: 'hover:bg-gray-50 border-2 border-transparent'
-									}`}
-									onClick={() => handleFlowSelect(flow.id)}
-									style={{ padding: '12px' }}
-								>
-									<div className="w-full">
-										<div className="flex items-start gap-2">
-											<FileTextOutlined className={selectedFlowId === flow.id ? 'text-blue-600' : 'text-gray-400'} />
-											<div className="flex-1 min-w-0">
-												<div className={`font-medium text-sm truncate ${
-													selectedFlowId === flow.id ? 'text-blue-900' : 'text-gray-900'
-												}`}>
-													{flow.name}
-												</div>
-												<div className="text-xs text-gray-500 mt-1 line-clamp-2">
-													{flow.description}
-												</div>
-												<div className="text-xs text-gray-400 mt-1">
-													v{flow.version} • {flow.lastModified}
-												</div>
-											</div>
-										</div>
+						<Collapse
+							accordion
+							bordered={false}
+							defaultActiveKey={['session']}
+							className="flow-collection-accordion"
+						>
+							<Panel header="1. Session Management" key="session">
+								<div className="space-y-1">
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'sm-policy-association' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('sm-policy-association')}
+									>
+										1.1. SM Policy Association
 									</div>
-								</List.Item>
-							)}
-						/>
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'qos-on-demand' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('qos-on-demand')}
+									>
+										1.2. QoS on Demand
+									</div>
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'vonr-call' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('vonr-call')}
+									>
+										1.3. VoNR Call
+									</div>
+								</div>
+							</Panel>
+							
+							<Panel header="2. Access & Mobility Policy" key="access">
+								<div className="space-y-1">
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'am-policy-association' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('am-policy-association')}
+									>
+										2.1. AM Policy Association
+									</div>
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'am-policy-authorization' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('am-policy-authorization')}
+									>
+										2.2. AM Policy Authorization
+									</div>
+								</div>
+							</Panel>
+							
+							<Panel header="3. UE Policy" key="ue">
+								<div className="space-y-1">
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'ue-policy-association' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('ue-policy-association')}
+									>
+										3.1. UE Policy Association
+									</div>
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'ue-policy-delivery' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('ue-policy-delivery')}
+									>
+										3.2. UE Policy Delivery
+									</div>
+									<div 
+										className={`text-sm p-2 hover:bg-gray-50 cursor-pointer rounded ${
+											selectedFlowId === 'af-guidance-ursp' ? 'bg-blue-100 font-semibold text-blue-700' : ''
+										}`}
+										onClick={() => handleFlowSelect('af-guidance-ursp')}
+									>
+										3.3. AF guidance on URSP
+									</div>
+								</div>
+							</Panel>
+						</Collapse>
+						
+						<div className="mt-6 flex justify-center">
+							<Button
+								type="default"
+								size="large"
+								icon={<PlusOutlined />}
+								onClick={handleCreateFlow}
+								className="w-32"
+							>
+								New flow
+							</Button>
+						</div>
 					</div>
 				</div>
 

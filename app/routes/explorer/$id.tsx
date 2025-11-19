@@ -124,6 +124,7 @@ export default function ExplorerDoc() {
 							if (!HIERARCHY.some((g) => g.key === info.key)) nav(`/explorer/${info.key}`);
 						}}
 						style={{ borderRight: 0 }}
+						className="explorer-menu"
 					/>
 				</div>
 			</aside>

@@ -31,7 +31,7 @@ interface PolicyFlowGraphProps {
 }
 
 const STEP_HEIGHT = 80;
-const STEP_MIN_HEIGHT = 80;
+const STEP_MIN_HEIGHT = 90;
 const PROCESS_HEIGHT = 50;
 const PROCESS_VERTICAL_GAP = 10;
 const NODE_HEIGHT = 60;
@@ -117,7 +117,7 @@ const ProcessNode = ({ data, selected }: NodeProps) => {
 					<CloseOutlined style={{ fontSize: 10 }} />
 				</button>
 			)}
-			<div style={{ whiteSpace: 'pre-line' }}>{data.label}</div>
+			<div>{data.label}</div>
 		</div>
 	);
 };
@@ -489,26 +489,23 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		const stepHeights = new Map<string, { height: number; maxProcesses: number }>();
 		stepLanes.forEach((step, index) => {
 			let maxProcessesInColumn = 0;
-			const stepY = step.position.y;
-			const nextStepY = index < stepLanes.length - 1 ? stepLanes[index + 1].position.y : stepY + 500;
 			
 			networkNodes.forEach(networkNode => {
 				const nodeX = networkNode.position.x;
 				
-				// Count processes in this column for this step (between current step and next step)
-				const processesInColumn = currentNodes.filter(n =>
-					n.type === 'processNode' &&
-					Math.abs(n.position.x - nodeX) < 20 && // Same column
-					n.position.y >= stepY + 10 && // Below step start
-					n.position.y < nextStepY // Above next step
-				).length;
+				// Count processes in this column for this step (using parentId)
+				const processesInColumn = currentNodes.filter(n => {
+					if (n.type !== 'processNode' || n.parentId !== step.id) return false;
+					const absoluteX = n.position.x + step.position.x;
+					return Math.abs(absoluteX - nodeX) < 20; // Same column
+				}).length;
 				
 				maxProcessesInColumn = Math.max(maxProcessesInColumn, processesInColumn);
 			});
 			
 			const calculatedHeight = maxProcessesInColumn > 0
-				? 15 + maxProcessesInColumn * PROCESS_HEIGHT + (maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 15
-				: STEP_MIN_HEIGHT;
+				? 20 + maxProcessesInColumn * PROCESS_HEIGHT + (maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 20 + 20
+				: STEP_MIN_HEIGHT + 20;
 			stepHeights.set(step.id, { height: calculatedHeight, maxProcesses: maxProcessesInColumn });
 		});
 		
@@ -529,36 +526,6 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		});
 		
 		setNodes((nds) => {
-			// Create process-to-step map using CURRENT state (nds), not currentNodes
-			const processToStepMap = new Map<string, string>();
-			const currentStepLanes = nds.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
-			
-			nds.forEach(node => {
-				if (node.type === 'processNode') {
-					const processY = node.position.y;
-					
-					// Find which step this process belongs to in CURRENT state
-					for (let i = 0; i < currentStepLanes.length; i++) {
-						const step = currentStepLanes[i];
-						const stepY = step.position.y;
-						const nextStepY = i < currentStepLanes.length - 1 ? currentStepLanes[i + 1].position.y : stepY + 500;
-						
-						if (processY >= stepY + 10 && processY < nextStepY) {
-							processToStepMap.set(node.id, step.id);
-							break;
-						}
-					}
-				}
-			});
-			
-			// Calculate deltas for each step
-			const stepDeltas = new Map<string, number>();
-			currentStepLanes.forEach(step => {
-				const newY = stepPositions.get(step.id);
-				const oldY = step.position.y;
-				stepDeltas.set(step.id, newY !== undefined ? newY - oldY : 0);
-			});
-			
 			return nds.map((node) => {
 				if (node.type === 'stepLane') {
 					const newY = stepPositions.get(node.id);
@@ -575,22 +542,8 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 							maxProcessesInColumn: heightInfo ? heightInfo.maxProcesses : 0,
 						},
 					};
-				} else if (node.type === 'processNode') {
-					// Find parent step from the map
-					const parentStepId = processToStepMap.get(node.id);
-					if (parentStepId) {
-						const delta = stepDeltas.get(parentStepId);
-						if (delta !== undefined && delta !== 0) {
-							return {
-								...node,
-								position: {
-									...node.position,
-									y: node.position.y + delta,
-								},
-							};
-						}
-					}
 				}
+				// Process nodes with parentId will automatically move with their parent
 				return node;
 			});
 		});
@@ -682,29 +635,31 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 					: stepY + 500;
 				
 				// Remove the process(es)
-				let newNodes = nds.filter((node) => !nodesToDelete.has(node.id));					// Find all processes in the same column below the deleted process
-					const processesToShift = newNodes.filter(n =>
-						n.type === 'processNode' &&
-						Math.abs(n.position.x - deletedX) < 20 && // Same column
-						n.position.y > deletedY && // Below deleted process
-						n.position.y >= stepY + 10 && // In this step
-						n.position.y < nextStepY // Before next step
-					);
-					// Shift them up by one process height + gap
-					if (processesToShift.length > 0) {
-						newNodes = newNodes.map(node => {
-							if (processesToShift.some(p => p.id === node.id)) {
-								return {
-									...node,
-									position: {
-										...node.position,
-										y: node.position.y - (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP)
-									}
-								};
-							}
-							return node;
-						});
-					}
+				let newNodes = nds.filter((node) => !nodesToDelete.has(node.id));
+				
+				// Find all processes in the same column below the deleted process in the same step
+				const processesToShift = newNodes.filter(n => {
+					if (n.type !== 'processNode' || n.parentId !== parentStep.id) return false;
+					const absoluteX = n.position.x + parentStep.position.x;
+					const absoluteY = n.position.y + parentStep.position.y;
+					return Math.abs(absoluteX - deletedX) < 20 && absoluteY > deletedY;
+				});
+				
+				// Shift them up by one process height + gap
+				if (processesToShift.length > 0) {
+					newNodes = newNodes.map(node => {
+						if (processesToShift.some(p => p.id === node.id)) {
+							return {
+								...node,
+								position: {
+									...node.position,
+									y: node.position.y - (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP)
+								}
+							};
+						}
+						return node;
+					});
+				}
 					
 					// Update step heights
 					setTimeout(() => updateStepLaneHeights(newNodes), 0);
@@ -1001,8 +956,8 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		if (steps.length > 0) {
 			const lastStep = steps[steps.length - 1];
 			const lastStepHeight = lastStep.data.maxProcessesInColumn > 0
-				? 15 + lastStep.data.maxProcessesInColumn * PROCESS_HEIGHT + (lastStep.data.maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 15
-				: STEP_MIN_HEIGHT;
+				? 20 + lastStep.data.maxProcessesInColumn * PROCESS_HEIGHT + (lastStep.data.maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 20 + 20
+				: STEP_MIN_HEIGHT + 20;
 			newY = lastStep.position.y + lastStepHeight + 20; // 20px gap
 		}
 		
@@ -1262,17 +1217,16 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 			: stepY + 500;
 		
 		// Find existing processes in this step/column to calculate stack position
-		const existingProcessesInColumn = nodes.filter(n => 
-			n.type === 'processNode' && 
-			Math.abs(n.position.x - alignedX) < 20 && // Same column (within 20px tolerance)
-			n.position.y >= stepY + 10 && // Below step start
-			n.position.y < nextStepY // Above next step
-		);
+		const existingProcessesInColumn = nodes.filter(n => {
+			if (n.type !== 'processNode' || n.parentId !== selectedStepId) return false;
+			const absoluteX = n.position.x + selectedStep.position.x;
+			return Math.abs(absoluteX - alignedX) < 20; // Same column (within 20px tolerance)
+		});
 		
 		const stackIndex = existingProcessesInColumn.length;
 		// Position relative to parent step (not absolute)
 		const relativeX = alignedX - selectedStep.position.x;
-		const relativeY = 15 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const relativeY = 20 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Get current counter for this node, default to 1
 		const currentCounter = nodeProcessCounters[nodeId] || 1;
@@ -1372,25 +1326,23 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		
 		// Calculate positions for sender (from node column)
 		const senderX = fromNode.x + NODE_WIDTH / 2 - 40; // 40 is half of 80px minWidth
-		const senderExistingProcesses = nodes.filter(n => 
-			n.type === 'processNode' && 
-			Math.abs(n.position.x - senderX) < 20 &&
-			n.position.y >= stepY + 10 && 
-			n.position.y < nextStepY
-		);
+		const senderExistingProcesses = nodes.filter(n => {
+			if (n.type !== 'processNode' || n.parentId !== selectedStepId) return false;
+			const absoluteX = n.position.x + selectedStep.position.x;
+			return Math.abs(absoluteX - senderX) < 20;
+		});
 		const senderStackIndex = senderExistingProcesses.length;
-		const senderY = selectedStep.position.y + 15 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const senderY = selectedStep.position.y + 20 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Calculate positions for receiver (to node column)
 		const receiverX = toNode.x + NODE_WIDTH / 2 - 40; // 40 is half of 80px minWidth
-		const receiverExistingProcesses = nodes.filter(n => 
-			n.type === 'processNode' && 
-			Math.abs(n.position.x - receiverX) < 20 &&
-			n.position.y >= stepY + 10 && 
-			n.position.y < nextStepY
-		);
+		const receiverExistingProcesses = nodes.filter(n => {
+			if (n.type !== 'processNode' || n.parentId !== selectedStepId) return false;
+			const absoluteX = n.position.x + selectedStep.position.x;
+			return Math.abs(absoluteX - receiverX) < 20;
+		});
 		const receiverStackIndex = receiverExistingProcesses.length;
-		const receiverY = selectedStep.position.y + 15 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const receiverY = selectedStep.position.y + 20 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		const requestId = `api-req-${apiRequestCounter}`;
 		const senderId = `sender-${requestId}`;
@@ -1569,25 +1521,23 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		
 		// Calculate positions for sender (reverse direction)
 		const senderX = fromNode.x + NODE_WIDTH / 2 - 40;
-		const senderExistingProcesses = nodes.filter(n => 
-			n.type === 'processNode' && 
-			Math.abs(n.position.x - senderX) < 20 &&
-			n.position.y >= stepY + 10 && 
-			n.position.y < nextStepY
-		);
+		const senderExistingProcesses = nodes.filter(n => {
+			if (n.type !== 'processNode' || n.parentId !== selectedStepId) return false;
+			const absoluteX = n.position.x + selectedStep.position.x;
+			return Math.abs(absoluteX - senderX) < 20;
+		});
 		const senderStackIndex = senderExistingProcesses.length;
-		const senderY = selectedStep.position.y + 15 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const senderY = selectedStep.position.y + 20 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Calculate positions for receiver
 		const receiverX = toNode.x + NODE_WIDTH / 2 - 40;
-		const receiverExistingProcesses = nodes.filter(n => 
-			n.type === 'processNode' && 
-			Math.abs(n.position.x - receiverX) < 20 &&
-			n.position.y >= stepY + 10 && 
-			n.position.y < nextStepY
-		);
+		const receiverExistingProcesses = nodes.filter(n => {
+			if (n.type !== 'processNode' || n.parentId !== selectedStepId) return false;
+			const absoluteX = n.position.x + selectedStep.position.x;
+			return Math.abs(absoluteX - receiverX) < 20;
+		});
 		const receiverStackIndex = receiverExistingProcesses.length;
-		const receiverY = selectedStep.position.y + 15 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const receiverY = selectedStep.position.y + 20 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		const responseId = `${selectedRequestId}-resp`;
 		const senderId = `sender-${responseId}`;
