@@ -20,9 +20,11 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { CloseOutlined, AppstoreOutlined, NodeIndexOutlined, BranchesOutlined, ApiOutlined, ArrowUpOutlined, ArrowDownOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Card, Input, Select } from 'antd';
+import type { FlowData } from '~/types/flow.types';
 
 interface PolicyFlowGraphProps {
 	policyId: number;
+	flowData?: FlowData;
 	onProcessNodeSelect?: (node: Node | null) => void;
 	onNFNodeSelect?: (node: Node | null) => void;
 	onStepSelect?: (node: Node | null) => void;
@@ -243,28 +245,28 @@ const nodeTypes = {
 	verticalLine: VerticalNodeLine,
 };
 
-// Initial demo data
-const getInitialFlowData = (
-	policyId: number, 
+// Function to convert FlowData to ReactFlow nodes and edges
+const convertFlowDataToReactFlow = (
+	flowData: FlowData,
 	onDeleteNode: ((nodeId: string) => void) | null = null,
 	onMoveStepUp: ((stepId: string) => void) | null = null,
 	onMoveStepDown: ((stepId: string) => void) | null = null
 ) => {
-	// Define node positions for alignment - using consistent NODE_SPACING
-	const startX = 250;
-	const nodePositions = [
-		{ id: 'node-ue', x: startX, label: 'UE', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
-		{ id: 'node-amf', x: startX + NODE_SPACING, label: 'AMF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
-		{ id: 'node-smf', x: startX + NODE_SPACING * 2, label: 'SMF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
-		{ id: 'node-pcf', x: startX + NODE_SPACING * 3, label: 'PCF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
-		{ id: 'node-upf', x: startX + NODE_SPACING * 4, label: 'UPF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
-	];
-
 	const nodes: Node[] = [];
+	const edges: Edge[] = [];
+	const startX = 250;
+	
+	// Create node positions map
+	const nodePositions = flowData.nodes.map((nfNode, index) => ({
+		id: nfNode.id,
+		x: startX + (index * NODE_SPACING),
+		label: nfNode.name,
+		gradient: '#3B82F6',
+		lineColor: 'rgba(59, 130, 246, 0.15)',
+	}));
 	
 	// Create Network Nodes (top row) and their vertical lines
 	nodePositions.forEach((nodePos) => {
-		// Network node
 		nodes.push({
 			id: nodePos.id,
 			type: 'networkNode',
@@ -277,80 +279,152 @@ const getInitialFlowData = (
 			draggable: false,
 		});
 		
-		// Vertical line extending down from node
 		nodes.push({
 			id: `${nodePos.id}-line`,
 			type: 'verticalLine',
-			position: { x: nodePos.x + NODE_WIDTH / 2 - 1, y: 90 }, // Position at center of node
+			position: { x: nodePos.x + NODE_WIDTH / 2 - 1, y: 90 },
 			data: {
-				height: 400, // Will extend through all steps
+				height: 100 + flowData.steps.length * 100,
 				color: nodePos.lineColor,
 			},
 			selectable: false,
 			draggable: false,
 		});
 	});
-
-	// Step 1
-	nodes.push({
-		id: 'step-1',
-		type: 'stepLane',
-		position: { x: 50, y: 120 },
-		data: {
-			stepNumber: 1,
-			label: 'Session Request',
-			nodeCount: nodePositions.length,
-			lastNodeX: nodePositions[nodePositions.length - 1].x,
-			maxProcessesInColumn: 0, // No processes initially
-			onDelete: onDeleteNode ? () => onDeleteNode('step-1') : undefined,
-			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-1') : undefined,
-			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-1') : undefined,
-		},
-		draggable: false,
+	
+	// Create Steps
+	flowData.steps.forEach((step, index) => {
+		const stepY = 120 + (index * 100);
+		
+		// Calculate max processes in this step
+		const processesInStep = flowData.processes.filter(p => p.stepId === step.id);
+		const maxProcessesInColumn = Math.max(1, Math.ceil(processesInStep.length / nodePositions.length));
+		
+		nodes.push({
+			id: step.id,
+			type: 'stepLane',
+			position: { x: 50, y: stepY },
+			data: {
+				stepNumber: step.stepNumber,
+				label: step.name,
+				nodeCount: nodePositions.length,
+				lastNodeX: nodePositions[nodePositions.length - 1]?.x || startX,
+				maxProcessesInColumn,
+				onDelete: onDeleteNode ? () => onDeleteNode(step.id) : undefined,
+				onMoveUp: onMoveStepUp ? () => onMoveStepUp(step.id) : undefined,
+				onMoveDown: onMoveStepDown ? () => onMoveStepDown(step.id) : undefined,
+			},
+			draggable: false,
+		});
 	});
-
-	// Step 2
-	nodes.push({
-		id: 'step-2',
-		type: 'stepLane',
-		position: { x: 50, y: 220 },
-		data: {
-			stepNumber: 2,
-			label: 'Authentication',
-			nodeCount: nodePositions.length,
-			lastNodeX: nodePositions[nodePositions.length - 1].x,
-			maxProcessesInColumn: 0, // No processes initially
-			onDelete: onDeleteNode ? () => onDeleteNode('step-2') : undefined,
-			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-2') : undefined,
-			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-2') : undefined,
-		},
-		draggable: false,
+	
+	// Create Processes
+	flowData.processes.forEach((process) => {
+		const nodePos = nodePositions.find(np => np.id === process.nodeId);
+		if (!nodePos) return;
+		
+		const stepIndex = flowData.steps.findIndex(s => s.id === process.stepId);
+		if (stepIndex === -1) return;
+		
+		const stepY = 120 + (stepIndex * 100);
+		
+		// Adjust process position to account for step label padding (32px top + 8px gap)
+		const adjustedY = process.position.y < stepY + 40 ? stepY + 40 : process.position.y;
+		
+		nodes.push({
+			id: process.id,
+			type: 'processNode',
+			position: { x: process.position.x, y: adjustedY },
+			data: {
+				label: process.label,
+				background: process.type === 'sender' ? '#BFDBFE' : process.type === 'receiver' ? '#E5E7EB' : '#F3F4F6',
+				borderColor: process.type === 'sender' ? '#3B82F6' : process.type === 'receiver' ? '#6B7280' : '#9CA3AF',
+				color: process.type === 'sender' ? '#1E40AF' : process.type === 'receiver' ? '#374151' : '#374151',
+				onDelete: onDeleteNode ? () => onDeleteNode(process.id) : undefined,
+			},
+			draggable: false,
+		});
 	});
-
-	// Step 3
-	nodes.push({
-		id: 'step-3',
-		type: 'stepLane',
-		position: { x: 50, y: 320 },
-		data: {
-			stepNumber: 3,
-			label: 'Policy Decision',
-			nodeCount: nodePositions.length,
-			lastNodeX: nodePositions[nodePositions.length - 1].x,
-			maxProcessesInColumn: 0, // No processes initially
-			onDelete: onDeleteNode ? () => onDeleteNode('step-3') : undefined,
-			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-3') : undefined,
-			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-3') : undefined,
-		},
-		draggable: false,
+	
+	// Create edges for API calls - group by step and find sender-receiver pairs
+	const apiCallsByStep = new Map<string, any[]>();
+	
+	flowData.processes.forEach((process) => {
+		if (process.apiType === 'request') {
+			const stepProcesses = apiCallsByStep.get(process.stepId) || [];
+			stepProcesses.push(process);
+			apiCallsByStep.set(process.stepId, stepProcesses);
+		}
 	});
-
-	const edges: Edge[] = [];
-
+	
+	// Create edges for each sender-receiver pair in each step
+	apiCallsByStep.forEach((processes, stepId) => {
+		const senders = processes.filter(p => p.type === 'sender');
+		const receivers = processes.filter(p => p.type === 'receiver');
+		
+		// Pair each sender with receiver (simple pairing by index for now)
+		senders.forEach((sender, index) => {
+			const receiver = receivers[index]; // Pair by index in same step
+			
+			if (receiver) {
+				// Get actual node positions
+				const senderNode = nodes.find(n => n.id === sender.id);
+				const receiverNode = nodes.find(n => n.id === receiver.id);
+				
+				if (senderNode && receiverNode) {
+					const senderPos = { x: senderNode.position.x, y: senderNode.position.y };
+					const receiverPos = { x: receiverNode.position.x, y: receiverNode.position.y };
+					
+					// Determine best handles based on positions
+					const dx = receiverPos.x - senderPos.x;
+					const dy = receiverPos.y - senderPos.y;
+					
+					let sourceHandle = 'right';
+					let targetHandle = 'left';
+					
+					if (Math.abs(dx) < Math.abs(dy)) {
+						if (dy > 0) {
+							sourceHandle = 'bottom';
+							targetHandle = 'top';
+						} else {
+							sourceHandle = 'top';
+							targetHandle = 'bottom';
+						}
+					} else {
+						if (dx > 0) {
+							sourceHandle = 'right';
+							targetHandle = 'left';
+						} else {
+							sourceHandle = 'left';
+							targetHandle = 'right';
+						}
+					}
+					
+					edges.push({
+						id: `edge-${sender.id}-${receiver.id}`,
+						source: sender.id,
+						target: receiver.id,
+						sourceHandle,
+						targetHandle,
+						type: 'smoothstep',
+						animated: true,
+						style: { stroke: '#3B82F6', strokeWidth: 2 },
+						markerEnd: { type: MarkerType.ArrowClosed, color: '#3B82F6' },
+						label: sender.method || 'API',
+						labelStyle: { fill: '#3B82F6', fontWeight: 600, fontSize: 11 },
+						labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+						labelBgPadding: [4, 6] as [number, number],
+						labelBgBorderRadius: 4,
+					});
+				}
+			}
+		});
+	});
+	
 	return { nodes, edges, nodePositions };
 };
 
-export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNodeSelect, onStepSelect }: PolicyFlowGraphProps) {
+export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelect, onNFNodeSelect, onStepSelect }: PolicyFlowGraphProps) {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
 	const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 	const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -1084,12 +1158,20 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 
 	// Initialize flow data
 	React.useEffect(() => {
-		const flowData = getInitialFlowData(policyId, handleDeleteNode, handleMoveStepUp, handleMoveStepDown);
-		setNodes(flowData.nodes);
-		setEdges(flowData.edges);
-		setNodePositions(flowData.nodePositions);
+		if (flowData) {
+			// Use provided flow data
+			const reactFlowData = convertFlowDataToReactFlow(flowData, handleDeleteNode, handleMoveStepUp, handleMoveStepDown);
+			setNodes(reactFlowData.nodes);
+			setEdges(reactFlowData.edges);
+			setNodePositions(reactFlowData.nodePositions);
+		} else {
+			// Empty flow
+			setNodes([]);
+			setEdges([]);
+			setNodePositions([]);
+		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [policyId]);
+	}, [policyId, flowData]);
 
 	// Toggle node form
 	const handleAddNodeToggle = useCallback(() => {
@@ -1188,7 +1270,9 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		);
 		
 		const stackIndex = existingProcessesInColumn.length;
-		const alignedY = selectedStep.position.y + 15 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		// Position relative to parent step (not absolute)
+		const relativeX = alignedX - selectedStep.position.x;
+		const relativeY = 15 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Get current counter for this node, default to 1
 		const currentCounter = nodeProcessCounters[nodeId] || 1;
@@ -1198,8 +1282,10 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		const newNode: Node = {
 			id: newId,
 			type: 'processNode',
-			position: { x: alignedX, y: alignedY },
+			position: { x: relativeX, y: relativeY },
 			draggable: false,
+			parentId: selectedStepId,
+			extent: 'parent' as const,
 			data: {
 				label: `${nfLabel} Process ${currentCounter}`,
 				background: '#F3F4F6',
@@ -1311,14 +1397,22 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		const receiverId = `receiver-${requestId}`;
 		const edgeId = `edge-${requestId}`;
 		
+		// Convert to relative positions
+		const senderRelativeX = senderX - selectedStep.position.x;
+		const senderRelativeY = senderY - selectedStep.position.y;
+		const receiverRelativeX = receiverX - selectedStep.position.x;
+		const receiverRelativeY = receiverY - selectedStep.position.y;
+		
 		// Create Sender process
 		const senderNode: Node = {
 			id: senderId,
 			type: 'processNode',
-			position: { x: senderX, y: senderY },
+			position: { x: senderRelativeX, y: senderRelativeY },
 			draggable: false,
+			parentId: selectedStepId,
+			extent: 'parent' as const,
 			data: {
-				label: `${fromLabel}\nSender`,
+				label: `${fromLabel} Sender`,
 				background: '#BFDBFE',
 				borderColor: '#3B82F6',
 				color: '#1E40AF',
@@ -1350,10 +1444,12 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		const receiverNode: Node = {
 			id: receiverId,
 			type: 'processNode',
-			position: { x: receiverX, y: receiverY },
+			position: { x: receiverRelativeX, y: receiverRelativeY },
 			draggable: false,
+			parentId: selectedStepId,
+			extent: 'parent' as const,
 			data: {
-				label: `${toLabel}\nReceiver`,
+				label: `${toLabel} Receiver`,
 				background: '#E5E7EB',
 				borderColor: '#6B7280',
 				color: '#374151',
@@ -1498,14 +1594,22 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		const receiverId = `receiver-${responseId}`;
 		const edgeId = `edge-${responseId}`;
 		
+		// Convert to relative positions
+		const senderRelativeX = senderX - selectedStep.position.x;
+		const senderRelativeY = senderY - selectedStep.position.y;
+		const receiverRelativeX = receiverX - selectedStep.position.x;
+		const receiverRelativeY = receiverY - selectedStep.position.y;
+		
 		// Create Sender process
 		const senderNode: Node = {
 			id: senderId,
 			type: 'processNode',
-			position: { x: senderX, y: senderY },
+			position: { x: senderRelativeX, y: senderRelativeY },
 			draggable: false,
+			parentId: selectedStepId,
+			extent: 'parent' as const,
 			data: {
-				label: `${fromLabel}\nSender`,
+				label: `${fromLabel} Sender`,
 				background: '#BFDBFE',
 				borderColor: '#3B82F6',
 				color: '#1E40AF',
@@ -1537,10 +1641,12 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 		const receiverNode: Node = {
 			id: receiverId,
 			type: 'processNode',
-			position: { x: receiverX, y: receiverY },
+			position: { x: receiverRelativeX, y: receiverRelativeY },
 			draggable: false,
+			parentId: selectedStepId,
+			extent: 'parent' as const,
 			data: {
-				label: `${toLabel}\nReceiver`,
+				label: `${toLabel} Receiver`,
 				background: '#E5E7EB',
 				borderColor: '#6B7280',
 				color: '#374151',

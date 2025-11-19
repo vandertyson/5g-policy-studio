@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Button, Card, Form, Input, Select, Collapse, Descriptions } from "antd";
-import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { Button, Card, Form, Input, Select, Collapse, Descriptions, List } from "antd";
+import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined } from "@ant-design/icons";
 import PolicyFlowGraph from "../../components/designer/PolicyFlowGraph";
+import { mockFlows, mockFlowsData } from "../../data/mockFlows";
+import type { FlowData } from "../../types/flow.types";
 
 const { Panel } = Collapse;
 
@@ -76,6 +78,12 @@ export default function PolicyDetail() {
 	const { id } = useParams();
 	const navigate = useNavigate();
 	const policy = id ? mockPoliciesData[id] : null;
+	
+	// Flow management state
+	const [selectedFlowId, setSelectedFlowId] = useState<string>('flow-1');
+	const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(mockFlowsData['flow-1']);
+	
+	// Selection states for properties panel
 	const [selectedProcessNode, setSelectedProcessNode] = useState<any>(null);
 	const [selectedNFNode, setSelectedNFNode] = useState<any>(null);
 	const [selectedStep, setSelectedStep] = useState<any>(null);
@@ -94,6 +102,44 @@ export default function PolicyDetail() {
 			});
 		}
 	}, [policy, form]);
+	
+	// Load flow data when selected
+	const handleFlowSelect = (flowId: string) => {
+		setSelectedFlowId(flowId);
+		setCurrentFlowData(mockFlowsData[flowId] || null);
+		// Clear selections
+		setSelectedProcessNode(null);
+		setSelectedNFNode(null);
+		setSelectedStep(null);
+	};
+	
+	// Create new flow
+	const handleCreateFlow = () => {
+		const newFlowId = `flow-${Date.now()}`;
+		const newFlow: FlowData = {
+			metadata: {
+				id: newFlowId,
+				name: 'New Flow',
+				description: '',
+				version: '1.0.0',
+				createdAt: new Date().toISOString().split('T')[0],
+				lastModified: new Date().toISOString().split('T')[0],
+				author: 'Admin',
+			},
+			nodes: [],
+			steps: [],
+			processes: [],
+		};
+		mockFlowsData[newFlowId] = newFlow;
+		mockFlows.push({
+			id: newFlowId,
+			name: 'New Flow',
+			description: '',
+			lastModified: new Date().toISOString().split('T')[0],
+			version: '1.0.0',
+		});
+		handleFlowSelect(newFlowId);
+	};
 
 	if (!policy) {
 		return (
@@ -161,15 +207,77 @@ export default function PolicyDetail() {
 
 			{/* Main Content */}
 			<div className="flex-1 flex overflow-hidden">
+				{/* Flow List Sidebar - Left */}
+				<div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+					<div className="p-4">
+						<div className="flex items-center justify-between mb-4">
+							<h3 className="font-semibold text-gray-900">Flows</h3>
+							<Button
+								type="primary"
+								size="small"
+								icon={<PlusOutlined />}
+								onClick={handleCreateFlow}
+							>
+								New
+							</Button>
+						</div>
+						
+						<List
+							size="small"
+							dataSource={mockFlows}
+							renderItem={(flow) => (
+								<List.Item
+									className={`cursor-pointer transition-all rounded-lg mb-2 ${
+										selectedFlowId === flow.id
+											? 'bg-blue-50 border-2 border-blue-400'
+											: 'hover:bg-gray-50 border-2 border-transparent'
+									}`}
+									onClick={() => handleFlowSelect(flow.id)}
+									style={{ padding: '12px' }}
+								>
+									<div className="w-full">
+										<div className="flex items-start gap-2">
+											<FileTextOutlined className={selectedFlowId === flow.id ? 'text-blue-600' : 'text-gray-400'} />
+											<div className="flex-1 min-w-0">
+												<div className={`font-medium text-sm truncate ${
+													selectedFlowId === flow.id ? 'text-blue-900' : 'text-gray-900'
+												}`}>
+													{flow.name}
+												</div>
+												<div className="text-xs text-gray-500 mt-1 line-clamp-2">
+													{flow.description}
+												</div>
+												<div className="text-xs text-gray-400 mt-1">
+													v{flow.version} • {flow.lastModified}
+												</div>
+											</div>
+										</div>
+									</div>
+								</List.Item>
+							)}
+						/>
+					</div>
+				</div>
+
 				{/* Policy Flow Graph - Center */}
 				<div className="flex-1 p-6">
 					<Card className="h-full" bodyStyle={{ height: '100%', padding: 0 }}>
-						<PolicyFlowGraph 
-							policyId={policy.id} 
-							onProcessNodeSelect={setSelectedProcessNode}
-							onNFNodeSelect={setSelectedNFNode}
-							onStepSelect={setSelectedStep}
-						/>
+						{currentFlowData ? (
+							<PolicyFlowGraph 
+								policyId={policy.id}
+								flowData={currentFlowData}
+								onProcessNodeSelect={setSelectedProcessNode}
+								onNFNodeSelect={setSelectedNFNode}
+								onStepSelect={setSelectedStep}
+							/>
+						) : (
+							<div className="flex items-center justify-center h-full text-gray-400">
+								<div className="text-center">
+									<FileTextOutlined style={{ fontSize: 48 }} />
+									<p className="mt-4">No flow selected</p>
+								</div>
+							</div>
+						)}
 					</Card>
 				</div>
 
@@ -402,22 +510,44 @@ export default function PolicyDetail() {
 						) : (
 							// Flow Properties (Default)
 							<>
-								<h3 className="text-lg font-semibold mb-4">Policy Properties</h3>
+								<h3 className="text-lg font-semibold mb-4">Flow Properties</h3>
 						
-								<div className="space-y-3 text-sm">
-									<div>
-										<span className="text-gray-500">Created:</span>
-										<span className="ml-2 text-gray-900">{policy.lastModified}</span>
+								{currentFlowData && (
+									<div className="space-y-3 text-sm">
+										<div>
+											<span className="text-gray-500">Flow Name:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.name}</span>
+										</div>
+										<div>
+											<span className="text-gray-500">Description:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.description}</span>
+										</div>
+										<div>
+											<span className="text-gray-500">Version:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.version}</span>
+										</div>
+										<div>
+											<span className="text-gray-500">Created:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.createdAt}</span>
+										</div>
+										<div>
+											<span className="text-gray-500">Last Modified:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.lastModified}</span>
+										</div>
+										<div>
+											<span className="text-gray-500">Author:</span>
+											<span className="ml-2 text-gray-900">{currentFlowData.metadata.author}</span>
+										</div>
+										<div className="pt-4 border-t border-gray-200">
+											<div className="text-gray-500 mb-2">Statistics:</div>
+											<div className="space-y-1 text-xs">
+												<div>Nodes: {currentFlowData.nodes.length}</div>
+												<div>Steps: {currentFlowData.steps.length}</div>
+												<div>Processes: {currentFlowData.processes.length}</div>
+											</div>
+										</div>
 									</div>
-									<div>
-										<span className="text-gray-500">Last Modified:</span>
-										<span className="ml-2 text-gray-900">{policy.lastModified}</span>
-									</div>
-									<div>
-										<span className="text-gray-500">Author:</span>
-										<span className="ml-2 text-gray-900">Admin</span>
-									</div>
-								</div>
+								)}
 							</>
 						)}
 					</div>
