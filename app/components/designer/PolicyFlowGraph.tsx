@@ -46,7 +46,8 @@ const NetworkNode = ({ data, selected }: NodeProps) => {
 				selected ? 'ring-2 ring-blue-500 ring-offset-2 scale-105' : ''
 			}`}
 			style={{
-				background: data.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+				background: data.gradient || '#3B82F6',
+				border: '2px solid #2563EB',
 				color: 'white',
 				padding: '12px 24px',
 				borderRadius: 8,
@@ -54,7 +55,7 @@ const NetworkNode = ({ data, selected }: NodeProps) => {
 				fontWeight: 600,
 				textAlign: 'center',
 				minWidth: 100,
-				boxShadow: selected ? '0 8px 16px rgba(59, 130, 246, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+				boxShadow: selected ? '0 2px 8px rgba(59, 130, 246, 0.2)' : 'none',
 			}}
 		>
 			{selected && (
@@ -78,19 +79,19 @@ const ProcessNode = ({ data, selected }: NodeProps) => {
 	return (
 		<div
 			className={`relative transition-all duration-200 ${
-				selected ? 'ring-2 ring-green-500 ring-offset-2 scale-105' : ''
+				selected ? 'ring-2 ring-blue-500 ring-offset-2 scale-105' : ''
 			}`}
 			style={{
-				background: data.background || '#F0FDF4',
-				border: `2px solid ${data.borderColor || '#10B981'}`,
-				color: data.color || '#14532D',
+				background: data.background || '#F3F4F6',
+				border: `2px solid ${data.borderColor || '#9CA3AF'}`,
+				color: data.color || '#374151',
 				padding: '8px 12px',
 				borderRadius: 6,
 				fontSize: 11,
 				fontWeight: 500,
 				textAlign: 'center',
 				minWidth: 80,
-				boxShadow: selected ? '0 8px 16px rgba(16, 185, 129, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.08)',
+				boxShadow: selected ? '0 2px 6px rgba(59, 130, 246, 0.15)' : 'none',
 			}}
 		>
 			{/* Handles for connecting edges - all 4 sides (hidden from user) */}
@@ -136,15 +137,15 @@ const StepLane = ({ data, selected }: NodeProps) => {
 	return (
 		<div
 			className={`relative transition-all duration-200 ${
-				selected ? 'ring-2 ring-purple-500 ring-offset-2' : ''
+				selected ? 'ring-2 ring-blue-400 ring-offset-2' : ''
 			}`}
 			style={{
-				background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.05) 0%, rgba(139, 92, 246, 0.02) 100%)',
-				border: '2px solid rgba(139, 92, 246, 0.2)',
+				background: 'rgba(59, 130, 246, 0.05)',
+				border: '2px solid rgba(59, 130, 246, 0.2)',
 				borderRadius: 8,
-				paddingLeft: STEP_LABEL_WIDTH + 16, // Add padding to avoid overlap with label
+				paddingLeft: 16,
 				paddingRight: 16,
-				paddingTop: 8,
+				paddingTop: 32,
 				paddingBottom: 8,
 				fontSize: 13,
 				fontWeight: 600,
@@ -154,7 +155,7 @@ const StepLane = ({ data, selected }: NodeProps) => {
 				height: dynamicHeight,
 				display: 'flex',
 				alignItems: 'center',
-				boxShadow: selected ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none',
+				boxShadow: selected ? '0 2px 6px rgba(59, 130, 246, 0.2)' : 'none',
 			}}
 		>
 			{selected && (
@@ -168,17 +169,15 @@ const StepLane = ({ data, selected }: NodeProps) => {
 					<CloseOutlined style={{ fontSize: 10 }} />
 				</button>
 			)}
-			{/* Step label - positioned absolutely on the left */}
+			{/* Step label - positioned at top left */}
 			<div
 				style={{
 					position: 'absolute',
 					left: 16,
-					top: '50%',
-					transform: 'translateY(-50%)',
-					width: STEP_LABEL_WIDTH - 32,
-					fontWeight: 700,
-					fontSize: 12,
-					color: '#7C3AED',
+					top: 8,
+					fontWeight: 600,
+					fontSize: 11,
+					color: '#3B82F6',
 				}}
 			>
 				Step {data.stepNumber}: {data.label}
@@ -194,15 +193,15 @@ const RemoteCallEdge = ({ data, selected }: NodeProps) => {
 			className={`relative ${selected ? 'ring-2 ring-orange-500' : ''}`}
 			style={{
 				background: '#FFF7ED',
-				border: '2px solid #F97316',
+				border: '2px solid #6B7280',
 				borderRadius: 6,
 				padding: '4px 8px',
 				fontSize: 10,
 				fontWeight: 500,
-				color: '#7C2D12',
+				color: '#374151',
 				textAlign: 'center',
 				whiteSpace: 'nowrap',
-				boxShadow: selected ? '0 4px 8px rgba(249, 115, 22, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+				boxShadow: selected ? '0 2px 6px rgba(249, 115, 22, 0.3)' : 'none rgba(0, 0, 0, 0.1)',
 			}}
 		>
 			{data.showDelete && (
@@ -254,11 +253,11 @@ const getInitialFlowData = (
 	// Define node positions for alignment - using consistent NODE_SPACING
 	const startX = 250;
 	const nodePositions = [
-		{ id: 'node-ue', x: startX, label: 'UE', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', lineColor: 'rgba(102, 126, 234, 0.3)' },
-		{ id: 'node-amf', x: startX + NODE_SPACING, label: 'AMF', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', lineColor: 'rgba(240, 147, 251, 0.3)' },
-		{ id: 'node-smf', x: startX + NODE_SPACING * 2, label: 'SMF', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', lineColor: 'rgba(79, 172, 254, 0.3)' },
-		{ id: 'node-pcf', x: startX + NODE_SPACING * 3, label: 'PCF', gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', lineColor: 'rgba(67, 233, 123, 0.3)' },
-		{ id: 'node-upf', x: startX + NODE_SPACING * 4, label: 'UPF', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', lineColor: 'rgba(250, 112, 154, 0.3)' },
+		{ id: 'node-ue', x: startX, label: 'UE', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
+		{ id: 'node-amf', x: startX + NODE_SPACING, label: 'AMF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
+		{ id: 'node-smf', x: startX + NODE_SPACING * 2, label: 'SMF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
+		{ id: 'node-pcf', x: startX + NODE_SPACING * 3, label: 'PCF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
+		{ id: 'node-upf', x: startX + NODE_SPACING * 4, label: 'UPF', gradient: '#3B82F6', lineColor: 'rgba(59, 130, 246, 0.15)' },
 	];
 
 	const nodes: Node[] = [];
@@ -1117,8 +1116,8 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 			: 250;
 		
 		const newId = `node-${nodeCounter}`;
-		const gradient = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
-		const lineColor = 'rgba(168, 237, 234, 0.3)';
+		const gradient = '#3B82F6';
+		const lineColor = 'rgba(59, 130, 246, 0.15)';
 		
 		const newNodePos = { id: newId, x: newX, label: newNodeName.trim(), gradient, lineColor };
 		setNodePositions([...nodePositions, newNodePos]);
@@ -1320,7 +1319,7 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 			draggable: false,
 			data: {
 				label: `${fromLabel}\nSender`,
-				background: '#DBEAFE',
+				background: '#BFDBFE',
 				borderColor: '#3B82F6',
 				color: '#1E40AF',
 				onDelete: () => {
@@ -1355,9 +1354,9 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 			draggable: false,
 			data: {
 				label: `${toLabel}\nReceiver`,
-				background: '#FED7AA',
-				borderColor: '#F97316',
-				color: '#C2410C',
+				background: '#E5E7EB',
+				borderColor: '#6B7280',
+				color: '#374151',
 				onDelete: () => {
 					// Delete both sender and receiver
 					const responseSenderId = `sender-${requestId}-resp`;
@@ -1507,7 +1506,7 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 			draggable: false,
 			data: {
 				label: `${fromLabel}\nSender`,
-				background: '#DBEAFE',
+				background: '#BFDBFE',
 				borderColor: '#3B82F6',
 				color: '#1E40AF',
 				onDelete: () => {
@@ -1542,9 +1541,9 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 			draggable: false,
 			data: {
 				label: `${toLabel}\nReceiver`,
-				background: '#FED7AA',
-				borderColor: '#F97316',
-				color: '#C2410C',
+				background: '#E5E7EB',
+				borderColor: '#6B7280',
+				color: '#374151',
 				onDelete: () => {
 					// Delete both sender and receiver of response
 					setNodes((nds) => nds.filter((n) => n.id !== senderId && n.id !== receiverId));
@@ -1734,17 +1733,17 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 				<div className="flex gap-4">
 					{/* Flows Section - always enabled */}
 					<Card 
-						className="shadow-2xl border-2 border-purple-400 bg-white transition-all"
+						className="shadow-2xl border-2 border-blue-400 bg-white transition-all"
 						bodyStyle={{ padding: '12px 16px' }}
 					>
 						<div className="flex flex-col gap-2">
-							<div className="text-xs font-bold text-purple-600 mb-1">FLOWS</div>
+							<div className="text-xs font-bold text-blue-600 mb-1">FLOWS</div>
 							<div className="flex gap-2">
 								{/* Add Step with form */}
 								<div className="relative">
 									<div
 										onClick={handleAddStepToggle}
-										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-purple-300 hover:bg-purple-50 cursor-pointer hover:scale-105 transition-all"
+										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
 										style={{ minWidth: 90 }}
 									>
 										<div style={{ fontSize: 24, color: '#8B5CF6' }}>
@@ -1758,7 +1757,7 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 									{/* Add Step Form */}
 									{showStepForm && (
 										<div 
-											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-purple-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4"
+											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4"
 										>
 											<div className="text-xs font-bold text-gray-500 mb-3">Create New Step</div>
 											
@@ -1766,8 +1765,8 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 												{/* Step Number */}
 												<div>
 													<label className="block text-xs font-medium text-gray-700 mb-1">Step Number</label>
-													<div className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded">
-														<span className="text-lg font-bold text-purple-600">{stepCounter}</span>
+													<div className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded">
+														<span className="text-lg font-bold text-blue-600">{stepCounter}</span>
 													</div>
 												</div>
 												
@@ -1788,7 +1787,7 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 												<div className="flex gap-2 pt-2">
 													<button
 														onClick={handleConfirmAddStep}
-														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-500 hover:bg-purple-600 rounded transition-colors"
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors"
 													>
 														Add
 													</button>
@@ -1967,7 +1966,7 @@ export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNod
 										}`}
 										style={{ minWidth: 90 }}
 									>
-										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#F97316' : '#9CA3AF' }}>
+										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#6B7280' : '#9CA3AF' }}>
 											<ApiOutlined />
 										</div>
 										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
