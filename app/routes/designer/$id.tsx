@@ -76,6 +76,9 @@ export default function PolicyDetail() {
 	const { id } = useParams();
 	const navigate = useNavigate();
 	const policy = id ? mockPoliciesData[id] : null;
+	const [selectedProcessNode, setSelectedProcessNode] = useState<any>(null);
+	const [selectedNFNode, setSelectedNFNode] = useState<any>(null);
+	const [selectedStep, setSelectedStep] = useState<any>(null);
 
 	const [form] = Form.useForm();
 
@@ -161,109 +164,262 @@ export default function PolicyDetail() {
 				{/* Policy Flow Graph - Center */}
 				<div className="flex-1 p-6">
 					<Card className="h-full" bodyStyle={{ height: '100%', padding: 0 }}>
-						<PolicyFlowGraph policyId={policy.id} />
+						<PolicyFlowGraph 
+							policyId={policy.id} 
+							onProcessNodeSelect={setSelectedProcessNode}
+							onNFNodeSelect={setSelectedNFNode}
+							onStepSelect={setSelectedStep}
+						/>
 					</Card>
 				</div>
 
 				{/* Properties Panel - Right */}
 				<div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
 					<div className="p-4">
-						<h3 className="text-lg font-semibold mb-4">Properties</h3>
+						{selectedProcessNode ? (
+							// Process Node Properties
+							<>
+								<div className="flex items-center justify-between mb-4">
+									<div>
+										<h3 className="text-lg font-semibold text-indigo-600">Process Properties</h3>
+										<p className="text-xs text-gray-500 mt-1">{selectedProcessNode.data.label}</p>
+									</div>
+									<Button
+										size="small"
+										type="text"
+										onClick={() => setSelectedProcessNode(null)}
+									>
+										✕
+									</Button>
+								</div>
+
+								<Form layout="vertical" className="space-y-4">
+									{/* Node Type */}
+									<Form.Item label="Type">
+										<Input
+											value={
+												selectedProcessNode.id.includes('sender') ? 'Sender' :
+												selectedProcessNode.id.includes('receiver') ? 'Receiver' :
+												'Process'
+											}
+											disabled
+										/>
+									</Form.Item>
+
+									{/* For API Sender/Receiver */}
+									{(selectedProcessNode.id.includes('sender') || selectedProcessNode.id.includes('receiver')) && (
+										<>
+											<Form.Item label="API Type">
+												<Select defaultValue="HTTP">
+													<Select.Option value="HTTP">HTTP/REST</Select.Option>
+													<Select.Option value="gRPC">gRPC</Select.Option>
+													<Select.Option value="SOAP">SOAP</Select.Option>
+													<Select.Option value="GraphQL">GraphQL</Select.Option>
+												</Select>
+											</Form.Item>
+
+											<Form.Item label="Method">
+												<Select defaultValue="GET">
+													<Select.Option value="GET">GET</Select.Option>
+													<Select.Option value="POST">POST</Select.Option>
+													<Select.Option value="PUT">PUT</Select.Option>
+													<Select.Option value="DELETE">DELETE</Select.Option>
+													<Select.Option value="PATCH">PATCH</Select.Option>
+												</Select>
+											</Form.Item>
+
+											<Form.Item label="Endpoint">
+												<Input placeholder="/api/v1/resource" />
+											</Form.Item>
+
+											<Form.Item label="Timeout (ms)">
+												<Input type="number" defaultValue="5000" />
+											</Form.Item>
+
+											<Form.Item label="Retry Count">
+												<Input type="number" defaultValue="3" />
+											</Form.Item>
+										</>
+									)}
+
+									{/* For Regular Process */}
+									{!selectedProcessNode.id.includes('sender') && !selectedProcessNode.id.includes('receiver') && (
+										<>
+											<Form.Item label="Process Type">
+												<Select defaultValue="VALIDATION">
+													<Select.Option value="VALIDATION">Validation</Select.Option>
+													<Select.Option value="TRANSFORMATION">Transformation</Select.Option>
+													<Select.Option value="ENRICHMENT">Enrichment</Select.Option>
+													<Select.Option value="FILTERING">Filtering</Select.Option>
+													<Select.Option value="ROUTING">Routing</Select.Option>
+												</Select>
+											</Form.Item>
+
+											<Form.Item label="Description">
+												<Input.TextArea rows={3} placeholder="Enter process description" />
+											</Form.Item>
+										</>
+									)}
+
+									{/* Common Properties */}
+									<Form.Item label="Priority">
+										<Select defaultValue="NORMAL">
+											<Select.Option value="LOW">Low</Select.Option>
+											<Select.Option value="NORMAL">Normal</Select.Option>
+											<Select.Option value="HIGH">High</Select.Option>
+											<Select.Option value="CRITICAL">Critical</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Button type="primary" block>
+										Save Properties
+									</Button>
+								</Form>
+							</>
+						) : selectedNFNode ? (
+							// NF Node Properties
+							<>
+								<div className="flex items-center justify-between mb-4">
+									<div>
+										<h3 className="text-lg font-semibold text-blue-600">NF Node Properties</h3>
+										<p className="text-xs text-gray-500 mt-1">{selectedNFNode.data.label}</p>
+									</div>
+									<Button
+										size="small"
+										type="text"
+										onClick={() => setSelectedNFNode(null)}
+									>
+										✕
+									</Button>
+								</div>
+
+								<Form layout="vertical" className="space-y-4">
+									<Form.Item label="Node Name">
+										<Input defaultValue={selectedNFNode.data.label} />
+									</Form.Item>
+
+									<Form.Item label="NF Type">
+										<Select defaultValue="AMF">
+											<Select.Option value="AMF">AMF (Access and Mobility Management Function)</Select.Option>
+											<Select.Option value="SMF">SMF (Session Management Function)</Select.Option>
+											<Select.Option value="UPF">UPF (User Plane Function)</Select.Option>
+											<Select.Option value="PCF">PCF (Policy Control Function)</Select.Option>
+											<Select.Option value="UDM">UDM (Unified Data Management)</Select.Option>
+											<Select.Option value="AUSF">AUSF (Authentication Server Function)</Select.Option>
+											<Select.Option value="NEF">NEF (Network Exposure Function)</Select.Option>
+											<Select.Option value="NRF">NRF (Network Repository Function)</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Form.Item label="Instance ID">
+										<Input placeholder="instance-001" defaultValue="instance-001" />
+									</Form.Item>
+
+									<Form.Item label="IP Address">
+										<Input placeholder="192.168.1.100" />
+									</Form.Item>
+
+									<Form.Item label="Port">
+										<Input type="number" placeholder="8080" defaultValue="8080" />
+									</Form.Item>
+
+									<Form.Item label="Protocol">
+										<Select defaultValue="HTTP2">
+											<Select.Option value="HTTP2">HTTP/2</Select.Option>
+											<Select.Option value="HTTP1">HTTP/1.1</Select.Option>
+											<Select.Option value="gRPC">gRPC</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Form.Item label="Status">
+										<Select defaultValue="ACTIVE">
+											<Select.Option value="ACTIVE">Active</Select.Option>
+											<Select.Option value="INACTIVE">Inactive</Select.Option>
+											<Select.Option value="MAINTENANCE">Maintenance</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Button type="primary" block>
+										Save Properties
+									</Button>
+								</Form>
+							</>
+						) : selectedStep ? (
+							// Step Properties
+							<>
+								<div className="flex items-center justify-between mb-4">
+									<div>
+										<h3 className="text-lg font-semibold text-purple-600">Step Properties</h3>
+										<p className="text-xs text-gray-500 mt-1">{selectedStep.data.label}</p>
+									</div>
+									<Button
+										size="small"
+										type="text"
+										onClick={() => setSelectedStep(null)}
+									>
+										✕
+									</Button>
+								</div>
+
+								<Form layout="vertical" className="space-y-4">
+									<Form.Item label="Step Number">
+										<Input value={selectedStep.data.stepNumber} disabled />
+									</Form.Item>
+
+									<Form.Item label="Step Name">
+										<Input defaultValue={selectedStep.data.label} />
+									</Form.Item>
+
+									<Form.Item label="Step Type">
+										<Select defaultValue="SEQUENTIAL">
+											<Select.Option value="SEQUENTIAL">Sequential</Select.Option>
+											<Select.Option value="PARALLEL">Parallel</Select.Option>
+											<Select.Option value="CONDITIONAL">Conditional</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Form.Item label="Timeout (seconds)">
+										<Input type="number" placeholder="30" defaultValue="30" />
+									</Form.Item>
+
+									<Form.Item label="Error Handling">
+										<Select defaultValue="CONTINUE">
+											<Select.Option value="CONTINUE">Continue on Error</Select.Option>
+											<Select.Option value="STOP">Stop on Error</Select.Option>
+											<Select.Option value="RETRY">Retry on Error</Select.Option>
+										</Select>
+									</Form.Item>
+
+									<Form.Item label="Description">
+										<Input.TextArea rows={3} placeholder="Enter step description" />
+									</Form.Item>
+
+									<Button type="primary" block>
+										Save Properties
+									</Button>
+								</Form>
+							</>
+						) : (
+							// Flow Properties (Default)
+							<>
+								<h3 className="text-lg font-semibold mb-4">Policy Properties</h3>
 						
-						<Form form={form} layout="vertical" className="space-y-4">
-							<Collapse defaultActiveKey={['basic', 'qos']} ghost>
-								<Panel header={<span className="font-semibold">Basic Information</span>} key="basic">
-									<Form.Item name="name" label="Policy Name" rules={[{ required: true }]}>
-										<Input />
-									</Form.Item>
-									
-									<Form.Item name="description" label="Description">
-										<Input.TextArea rows={3} />
-									</Form.Item>
-									
-									<Form.Item name="type" label="Type">
-										<Select>
-											<Select.Option value="QoS">QoS</Select.Option>
-											<Select.Option value="Bandwidth">Bandwidth</Select.Option>
-											<Select.Option value="Priority">Priority</Select.Option>
-										</Select>
-									</Form.Item>
-									
-									<Form.Item name="status" label="Status">
-										<Select>
-											<Select.Option value="Active">Active</Select.Option>
-											<Select.Option value="Draft">Draft</Select.Option>
-											<Select.Option value="Inactive">Inactive</Select.Option>
-										</Select>
-									</Form.Item>
-									
-									<Form.Item name="version" label="Version">
-										<Input />
-									</Form.Item>
-								</Panel>
-
-								<Panel header={<span className="font-semibold">QoS Configuration</span>} key="qos">
-									<Form.Item name="priority" label="Priority">
-										<Select>
-											<Select.Option value="Low">Low</Select.Option>
-											<Select.Option value="Normal">Normal</Select.Option>
-											<Select.Option value="High">High</Select.Option>
-											<Select.Option value="Critical">Critical</Select.Option>
-										</Select>
-									</Form.Item>
-									
-									<Form.Item name="maxBandwidth" label="Max Bandwidth">
-										<Input placeholder="e.g., 100Mbps" />
-									</Form.Item>
-									
-									<Form.Item name="latency" label="Latency">
-										<Input placeholder="e.g., 50ms" />
-									</Form.Item>
-									
-									<Form.Item name="jitter" label="Jitter">
-										<Input placeholder="e.g., 10ms" />
-									</Form.Item>
-								</Panel>
-
-								<Panel header={<span className="font-semibold">Rules ({policy.rules.length})</span>} key="rules">
-									<div className="space-y-2">
-										{policy.rules.map((rule: any, index: number) => (
-											<div
-												key={rule.id}
-												className="p-3 border border-gray-200 rounded-lg bg-gray-50"
-											>
-												<div className="font-medium text-sm text-gray-900">
-													{index + 1}. {rule.name}
-												</div>
-												<div className="text-xs text-gray-500 mt-1">
-													Type: {rule.type}
-												</div>
-											</div>
-										))}
-										<Button type="dashed" block size="small">
-											+ Add Rule
-										</Button>
+								<div className="space-y-3 text-sm">
+									<div>
+										<span className="text-gray-500">Created:</span>
+										<span className="ml-2 text-gray-900">{policy.lastModified}</span>
 									</div>
-								</Panel>
-
-								<Panel header={<span className="font-semibold">Metadata</span>} key="metadata">
-									<div className="space-y-2 text-sm">
-										<div>
-											<span className="text-gray-500">Created:</span>
-											<span className="ml-2 text-gray-900">{policy.lastModified}</span>
-										</div>
-										<div>
-											<span className="text-gray-500">Last Modified:</span>
-											<span className="ml-2 text-gray-900">{policy.lastModified}</span>
-										</div>
-										<div>
-											<span className="text-gray-500">Author:</span>
-											<span className="ml-2 text-gray-900">Admin</span>
-										</div>
+									<div>
+										<span className="text-gray-500">Last Modified:</span>
+										<span className="ml-2 text-gray-900">{policy.lastModified}</span>
 									</div>
-								</Panel>
-							</Collapse>
-						</Form>
+									<div>
+										<span className="text-gray-500">Author:</span>
+										<span className="ml-2 text-gray-900">Admin</span>
+									</div>
+								</div>
+							</>
+						)}
 					</div>
 				</div>
 			</div>

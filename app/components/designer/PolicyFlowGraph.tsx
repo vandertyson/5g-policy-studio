@@ -9,6 +9,8 @@ import ReactFlow, {
 	useNodesState,
 	useEdgesState,
 	MarkerType,
+	Handle,
+	Position,
 	type Connection,
 	type Edge,
 	type Node,
@@ -17,10 +19,13 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { CloseOutlined, AppstoreOutlined, NodeIndexOutlined, BranchesOutlined, ApiOutlined, ArrowUpOutlined, ArrowDownOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { Card } from 'antd';
+import { Card, Input, Select } from 'antd';
 
 interface PolicyFlowGraphProps {
 	policyId: number;
+	onProcessNodeSelect?: (node: Node | null) => void;
+	onNFNodeSelect?: (node: Node | null) => void;
+	onStepSelect?: (node: Node | null) => void;
 }
 
 const STEP_HEIGHT = 80;
@@ -30,6 +35,7 @@ const PROCESS_VERTICAL_GAP = 10;
 const NODE_HEIGHT = 60;
 const GRID_SIZE = 20;
 const NODE_WIDTH = 120;
+const NODE_SPACING = 200; // Horizontal spacing between NF nodes
 const STEP_LABEL_WIDTH = 150; // Width reserved for step label on left
 
 // Custom Node Component (Network Function)
@@ -52,40 +58,15 @@ const NetworkNode = ({ data, selected }: NodeProps) => {
 			}}
 		>
 			{selected && (
-				<>
-					<button
-						className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110"
-						onClick={(e) => {
-							e.stopPropagation();
-							data.onDelete?.();
-						}}
-					>
-						<CloseOutlined style={{ fontSize: 10 }} />
-					</button>
-					{/* Move buttons */}
-					<div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
-						<button
-							className="w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center shadow-md transition-all hover:scale-110"
-							onClick={(e) => {
-								e.stopPropagation();
-								data.onMoveLeft?.();
-							}}
-							title="Move Left"
-						>
-							<ArrowLeftOutlined style={{ fontSize: 10 }} />
-						</button>
-						<button
-							className="w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center shadow-md transition-all hover:scale-110"
-							onClick={(e) => {
-								e.stopPropagation();
-								data.onMoveRight?.();
-							}}
-							title="Move Right"
-						>
-							<ArrowRightOutlined style={{ fontSize: 10 }} />
-						</button>
-					</div>
-				</>
+				<button
+					className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110"
+				onClick={(e) => {
+					e.stopPropagation();
+					data.onDelete?.();
+				}}
+			>
+				<CloseOutlined style={{ fontSize: 10 }} />
+			</button>
 			)}
 			{data.label}
 		</div>
@@ -103,15 +84,25 @@ const ProcessNode = ({ data, selected }: NodeProps) => {
 				background: data.background || '#F0FDF4',
 				border: `2px solid ${data.borderColor || '#10B981'}`,
 				color: data.color || '#14532D',
-				padding: '10px 16px',
-				borderRadius: 8,
-				fontSize: 12,
+				padding: '8px 12px',
+				borderRadius: 6,
+				fontSize: 11,
 				fontWeight: 500,
 				textAlign: 'center',
-				minWidth: 120,
+				minWidth: 80,
 				boxShadow: selected ? '0 8px 16px rgba(16, 185, 129, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.08)',
 			}}
 		>
+			{/* Handles for connecting edges - all 4 sides (hidden from user) */}
+			<Handle type="target" position={Position.Left} id="left" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="source" position={Position.Left} id="left" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="target" position={Position.Right} id="right" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="source" position={Position.Right} id="right" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="target" position={Position.Top} id="top" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="source" position={Position.Top} id="top" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="target" position={Position.Bottom} id="bottom" style={{ opacity: 0, pointerEvents: 'none' }} />
+			<Handle type="source" position={Position.Bottom} id="bottom" style={{ opacity: 0, pointerEvents: 'none' }} />
+			
 			{selected && (
 				<button
 					className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110"
@@ -167,40 +158,15 @@ const StepLane = ({ data, selected }: NodeProps) => {
 			}}
 		>
 			{selected && (
-				<>
-					<button
-						className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110"
-						onClick={(e) => {
-							e.stopPropagation();
-							data.onDelete?.();
-						}}
-					>
-						<CloseOutlined style={{ fontSize: 10 }} />
-					</button>
-					{/* Move buttons at the end of the lane */}
-					<div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col gap-1">
-						<button
-							className="w-6 h-6 bg-purple-500 hover:bg-purple-600 text-white rounded flex items-center justify-center shadow-md transition-all hover:scale-110"
-							onClick={(e) => {
-								e.stopPropagation();
-								data.onMoveUp?.();
-							}}
-							title="Move Up"
-						>
-							<ArrowUpOutlined style={{ fontSize: 10 }} />
-						</button>
-						<button
-							className="w-6 h-6 bg-purple-500 hover:bg-purple-600 text-white rounded flex items-center justify-center shadow-md transition-all hover:scale-110"
-							onClick={(e) => {
-								e.stopPropagation();
-								data.onMoveDown?.();
-							}}
-							title="Move Down"
-						>
-							<ArrowDownOutlined style={{ fontSize: 10 }} />
-						</button>
-					</div>
-				</>
+				<button
+					className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110"
+					onClick={(e) => {
+						e.stopPropagation();
+						data.onDelete?.();
+					}}
+				>
+					<CloseOutlined style={{ fontSize: 10 }} />
+				</button>
 			)}
 			{/* Step label - positioned absolutely on the left */}
 			<div
@@ -221,7 +187,7 @@ const StepLane = ({ data, selected }: NodeProps) => {
 	);
 };
 
-// Remote Call Edge (custom edge with label)
+// API Request Edge (custom edge with label)
 const RemoteCallEdge = ({ data, selected }: NodeProps) => {
 	return (
 		<div
@@ -255,17 +221,16 @@ const RemoteCallEdge = ({ data, selected }: NodeProps) => {
 	);
 };
 
-// Vertical Line from Node (thin line extending down from each node)
+// Vertical Line from Node (thin dashed line extending down from each node)
 const VerticalNodeLine = ({ data }: NodeProps) => {
 	return (
 		<div
 			style={{
-				width: 2,
+				width: 0,
 				height: data.height || 600,
-				background: data.color || 'rgba(100, 116, 139, 0.3)',
+				borderLeft: `2px dashed ${data.color || 'rgba(100, 116, 139, 0.4)'}`,
 				position: 'absolute',
-				left: '50%',
-				transform: 'translateX(-50%)',
+				left: '0',
 			}}
 		/>
 	);
@@ -280,14 +245,20 @@ const nodeTypes = {
 };
 
 // Initial demo data
-const getInitialFlowData = (policyId: number, onDeleteNode: ((nodeId: string) => void) | null = null) => {
-	// Define node positions for alignment
+const getInitialFlowData = (
+	policyId: number, 
+	onDeleteNode: ((nodeId: string) => void) | null = null,
+	onMoveStepUp: ((stepId: string) => void) | null = null,
+	onMoveStepDown: ((stepId: string) => void) | null = null
+) => {
+	// Define node positions for alignment - using consistent NODE_SPACING
+	const startX = 250;
 	const nodePositions = [
-		{ id: 'node-ue', x: 250, label: 'UE', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', lineColor: 'rgba(102, 126, 234, 0.3)' },
-		{ id: 'node-amf', x: 400, label: 'AMF', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', lineColor: 'rgba(240, 147, 251, 0.3)' },
-		{ id: 'node-smf', x: 550, label: 'SMF', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', lineColor: 'rgba(79, 172, 254, 0.3)' },
-		{ id: 'node-pcf', x: 700, label: 'PCF', gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', lineColor: 'rgba(67, 233, 123, 0.3)' },
-		{ id: 'node-upf', x: 850, label: 'UPF', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', lineColor: 'rgba(250, 112, 154, 0.3)' },
+		{ id: 'node-ue', x: startX, label: 'UE', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', lineColor: 'rgba(102, 126, 234, 0.3)' },
+		{ id: 'node-amf', x: startX + NODE_SPACING, label: 'AMF', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', lineColor: 'rgba(240, 147, 251, 0.3)' },
+		{ id: 'node-smf', x: startX + NODE_SPACING * 2, label: 'SMF', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', lineColor: 'rgba(79, 172, 254, 0.3)' },
+		{ id: 'node-pcf', x: startX + NODE_SPACING * 3, label: 'PCF', gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', lineColor: 'rgba(67, 233, 123, 0.3)' },
+		{ id: 'node-upf', x: startX + NODE_SPACING * 4, label: 'UPF', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', lineColor: 'rgba(250, 112, 154, 0.3)' },
 	];
 
 	const nodes: Node[] = [];
@@ -333,6 +304,8 @@ const getInitialFlowData = (policyId: number, onDeleteNode: ((nodeId: string) =>
 			lastNodeX: nodePositions[nodePositions.length - 1].x,
 			maxProcessesInColumn: 0, // No processes initially
 			onDelete: onDeleteNode ? () => onDeleteNode('step-1') : undefined,
+			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-1') : undefined,
+			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-1') : undefined,
 		},
 		draggable: false,
 	});
@@ -349,6 +322,8 @@ const getInitialFlowData = (policyId: number, onDeleteNode: ((nodeId: string) =>
 			lastNodeX: nodePositions[nodePositions.length - 1].x,
 			maxProcessesInColumn: 0, // No processes initially
 			onDelete: onDeleteNode ? () => onDeleteNode('step-2') : undefined,
+			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-2') : undefined,
+			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-2') : undefined,
 		},
 		draggable: false,
 	});
@@ -365,6 +340,8 @@ const getInitialFlowData = (policyId: number, onDeleteNode: ((nodeId: string) =>
 			lastNodeX: nodePositions[nodePositions.length - 1].x,
 			maxProcessesInColumn: 0, // No processes initially
 			onDelete: onDeleteNode ? () => onDeleteNode('step-3') : undefined,
+			onMoveUp: onMoveStepUp ? () => onMoveStepUp('step-3') : undefined,
+			onMoveDown: onMoveStepDown ? () => onMoveStepDown('step-3') : undefined,
 		},
 		draggable: false,
 	});
@@ -374,19 +351,32 @@ const getInitialFlowData = (policyId: number, onDeleteNode: ((nodeId: string) =>
 	return { nodes, edges, nodePositions };
 };
 
-export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
+export default function PolicyFlowGraph({ policyId, onProcessNodeSelect, onNFNodeSelect, onStepSelect }: PolicyFlowGraphProps) {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
 	const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 	const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+	const [selectedProcessNode, setSelectedProcessNode] = useState<Node | null>(null);
 	const [showProcessMenu, setShowProcessMenu] = useState(false);
+	const [showApiRequestForm, setShowApiRequestForm] = useState(false);
+	const [showApiResponseForm, setShowApiResponseForm] = useState(false);
+	const [fromNodeId, setFromNodeId] = useState<string>('');
+	const [toNodeId, setToNodeId] = useState<string>('');
+	const [selectedRequestId, setSelectedRequestId] = useState<string>('');
 	
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 	const [nodePositions, setNodePositions] = useState<any[]>([]);
 	const [stepCounter, setStepCounter] = useState(4);
+	const [showStepForm, setShowStepForm] = useState(false);
+	const [newStepName, setNewStepName] = useState('');
 	const [nodeCounter, setNodeCounter] = useState(6);
+	const [showNodeForm, setShowNodeForm] = useState(false);
+	const [newNodeName, setNewNodeName] = useState('');
+	const [newNodeType, setNewNodeType] = useState('');
 	const [processCounter, setProcessCounter] = useState(4);
-	const [remoteCallCounter, setRemoteCallCounter] = useState(3);
+	const [apiRequestCounter, setApiRequestCounter] = useState(1);
+	// Track API requests and their responses
+	const [apiRequests, setApiRequests] = useState<Record<string, { requestEdgeId: string, responseEdgeId: string | null, fromNodeId: string, toNodeId: string, stepId: string }>>({});
 	// Track process count per NF node
 	const [nodeProcessCounters, setNodeProcessCounters] = useState<Record<string, number>>({});
 
@@ -452,6 +442,7 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 		// Calculate cumulative Y positions for steps
 		let cumulativeY = stepLanes.length > 0 ? stepLanes[0].position.y : 120;
 		const stepPositions = new Map<string, number>();
+		
 		stepLanes.forEach((step, index) => {
 			if (index === 0) {
 				stepPositions.set(step.id, step.position.y);
@@ -465,6 +456,36 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 		});
 		
 		setNodes((nds) => {
+			// Create process-to-step map using CURRENT state (nds), not currentNodes
+			const processToStepMap = new Map<string, string>();
+			const currentStepLanes = nds.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
+			
+			nds.forEach(node => {
+				if (node.type === 'processNode') {
+					const processY = node.position.y;
+					
+					// Find which step this process belongs to in CURRENT state
+					for (let i = 0; i < currentStepLanes.length; i++) {
+						const step = currentStepLanes[i];
+						const stepY = step.position.y;
+						const nextStepY = i < currentStepLanes.length - 1 ? currentStepLanes[i + 1].position.y : stepY + 500;
+						
+						if (processY >= stepY + 10 && processY < nextStepY) {
+							processToStepMap.set(node.id, step.id);
+							break;
+						}
+					}
+				}
+			});
+			
+			// Calculate deltas for each step
+			const stepDeltas = new Map<string, number>();
+			currentStepLanes.forEach(step => {
+				const newY = stepPositions.get(step.id);
+				const oldY = step.position.y;
+				stepDeltas.set(step.id, newY !== undefined ? newY - oldY : 0);
+			});
+			
 			return nds.map((node) => {
 				if (node.type === 'stepLane') {
 					const newY = stepPositions.get(node.id);
@@ -482,25 +503,16 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 						},
 					};
 				} else if (node.type === 'processNode') {
-					// Adjust process positions based on their parent step's new position
-					const parentStepIndex = stepLanes.findIndex((step, index) => {
-						const stepY = step.position.y;
-						const nextStepY = index < stepLanes.length - 1 ? stepLanes[index + 1].position.y : stepY + 500;
-						return node.position.y >= stepY + 10 && node.position.y < nextStepY;
-					});
-					
-					if (parentStepIndex >= 0) {
-						const parentStep = stepLanes[parentStepIndex];
-						const newStepY = stepPositions.get(parentStep.id);
-						const oldStepY = parentStep.position.y;
-						const yDelta = newStepY !== undefined ? newStepY - oldStepY : 0;
-						
-						if (yDelta !== 0) {
+					// Find parent step from the map
+					const parentStepId = processToStepMap.get(node.id);
+					if (parentStepId) {
+						const delta = stepDeltas.get(parentStepId);
+						if (delta !== undefined && delta !== 0) {
 							return {
 								...node,
 								position: {
 									...node.position,
-									y: node.position.y + yDelta,
+									y: node.position.y + delta,
 								},
 							};
 						}
@@ -516,6 +528,67 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			// Check if deleting a process node
 			const deletedProcess = nds.find(n => n.id === nodeId && n.type === 'processNode');
 			if (deletedProcess) {
+				// Check if this is part of an API request/response pair
+				const nodesToDelete = new Set<string>([nodeId]);
+				
+				// Find associated API request/response
+				for (const [requestId, apiRequest] of Object.entries(apiRequests)) {
+					const senderId = `sender-${requestId}`;
+					const receiverId = `receiver-${requestId}`;
+					const responseSenderId = `sender-${requestId}-resp`;
+					const responseReceiverId = `receiver-${requestId}-resp`;
+					
+					// If deleting request sender or receiver, delete entire request and response
+					if (nodeId === senderId || nodeId === receiverId) {
+						nodesToDelete.add(senderId);
+						nodesToDelete.add(receiverId);
+						if (apiRequest.responseEdgeId) {
+							nodesToDelete.add(responseSenderId);
+							nodesToDelete.add(responseReceiverId);
+						}
+						// Also delete from apiRequests state
+						setApiRequests(prev => {
+							const newReqs = { ...prev };
+							delete newReqs[requestId];
+							return newReqs;
+						});
+						// Delete edges
+						setEdges(eds => eds.filter(e => 
+							e.id !== apiRequest.requestEdgeId && e.id !== apiRequest.responseEdgeId
+						));
+						break;
+					}
+					
+					// If deleting response sender or receiver, delete only response
+					if (nodeId === responseSenderId || nodeId === responseReceiverId) {
+						nodesToDelete.add(responseSenderId);
+						nodesToDelete.add(responseReceiverId);
+						// Update apiRequests to remove responseEdgeId
+						setApiRequests(prev => ({
+							...prev,
+							[requestId]: { ...prev[requestId], responseEdgeId: null }
+						}));
+						// Delete response edge and update request edge back to red
+						setEdges(eds => {
+							const updatedEdges = eds.filter(e => e.id !== apiRequest.responseEdgeId)
+								.map(e => {
+									if (e.id === apiRequest.requestEdgeId) {
+										return {
+											...e,
+											style: { stroke: '#EF4444', strokeWidth: 2.5 },
+											markerEnd: { type: MarkerType.ArrowClosed, color: '#EF4444', width: 20, height: 20 },
+											labelStyle: { fill: '#EF4444', fontWeight: 600, fontSize: 11 },
+											labelBgStyle: { fill: '#FEF2F2', fillOpacity: 0.9 },
+										};
+									}
+									return e;
+								});
+							return updatedEdges;
+						});
+						break;
+					}
+				}
+				
 				// Process node deletion - need to restack remaining processes
 				const deletedX = deletedProcess.position.x;
 				const deletedY = deletedProcess.position.y;
@@ -533,12 +606,10 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 					const stepY = parentStep.position.y;
 					const nextStepY = parentStepIndex < allSteps.length - 1 
 						? allSteps[parentStepIndex + 1].position.y 
-						: stepY + 500;
-					
-					// Remove the process
-					let newNodes = nds.filter((node) => node.id !== nodeId);
-					
-					// Find all processes in the same column below the deleted process
+					: stepY + 500;
+				
+				// Remove the process(es)
+				let newNodes = nds.filter((node) => !nodesToDelete.has(node.id));					// Find all processes in the same column below the deleted process
 					const processesToShift = newNodes.filter(n =>
 						n.type === 'processNode' &&
 						Math.abs(n.position.x - deletedX) < 20 && // Same column
@@ -565,15 +636,13 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 					// Update step heights
 					setTimeout(() => updateStepLaneHeights(newNodes), 0);
 					return newNodes;
-				}
-				
-				// If no parent step found, just delete
-				const newNodes = nds.filter((node) => node.id !== nodeId);
-				setTimeout(() => updateStepLaneHeights(newNodes), 0);
-				return newNodes;
 			}
 			
-			// Find the node being deleted (network node)
+			// If no parent step found, just delete
+			const newNodes = nds.filter((node) => !nodesToDelete.has(node.id));
+			setTimeout(() => updateStepLaneHeights(newNodes), 0);
+			return newNodes;
+		}			// Find the node being deleted (network node)
 			const deletedNode = nds.find(n => n.id === nodeId && n.type === 'networkNode');
 			if (!deletedNode) {
 				// Not a network node or process node, check if step
@@ -589,12 +658,17 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 							? allSteps[stepIndex + 1].position.y 
 							: stepY + 500;
 						
+						// Delete step label, background, and all processes
 						const newNodes = nds.filter((node) => {
-							if (node.id === nodeId) return false; // Remove step itself
+							// Delete step background and label
+							if (node.id === nodeId || node.id === `${nodeId}-bg`) {
+								return false;
+							}
+							// Delete processes in this step
 							if (node.type === 'processNode' && 
 								node.position.y >= stepY + 10 && 
 								node.position.y < nextStepY) {
-								return false; // Remove processes in this step
+								return false;
 							}
 							return true;
 						});
@@ -609,73 +683,10 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 				return newNodes;
 			}
 			
-			const deletedX = deletedNode.position.x;
-			
-			// Remove the node and its vertical line
-			let newNodes = nds.filter((node) => node.id !== nodeId && node.id !== `${nodeId}-line`);
-			
-			// Find all network nodes to the right of deleted node
-			const networkNodes = newNodes.filter(n => n.type === 'networkNode').sort((a, b) => a.position.x - b.position.x);
-			const nodesToShift = networkNodes.filter(n => n.position.x > deletedX);
-			
-			// Shift all nodes to the right by 150px to the left
-			if (nodesToShift.length > 0) {
-				newNodes = newNodes.map(node => {
-					// Check if this node or its line needs to be shifted
-					const isNodeToShift = nodesToShift.some(n => n.id === node.id);
-					const isLineToShift = nodesToShift.some(n => `${n.id}-line` === node.id);
-					
-					if (isNodeToShift || isLineToShift) {
-						return { ...node, position: { ...node.position, x: node.position.x - 150 } };
-					}
-					
-					// Also shift process nodes that are aligned with shifted columns
-					if (node.type === 'processNode') {
-						for (const shiftNode of nodesToShift) {
-							const originalX = shiftNode.position.x + 150; // X before shift
-							if (Math.abs(node.position.x - originalX) < 20) {
-								return { ...node, position: { ...node.position, x: node.position.x - 150 } };
-							}
-						}
-					}
-					
-					return node;
-				});
-			}
-			
-			// Update step lane widths after deletion
-			setTimeout(() => updateStepLaneWidths(newNodes), 0);
-			return newNodes;
+			// Network node deletion is disabled - just return unchanged nodes
+			return nds;
 		});
-		
-		// Update nodePositions array (outside of setNodes to avoid mutation)
-		setNodePositions((prevPositions) => {
-			const deletedNode = prevPositions.find(np => np.id === nodeId);
-			if (!deletedNode) return prevPositions;
-			
-			const deletedX = deletedNode.x;
-			
-			// Create new array without the deleted node and shift remaining nodes
-			return prevPositions
-				.filter(np => np.id !== nodeId)
-				.map(np => {
-					if (np.x > deletedX) {
-						return { ...np, x: np.x - 150 };
-					}
-					return np;
-				});
-		});
-		
-		setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-	}, [setNodes, setNodePositions, setEdges, updateStepLaneWidths, updateStepLaneHeights]);
-
-	// Initialize flow data
-	React.useEffect(() => {
-		const flowData = getInitialFlowData(policyId, handleDeleteNode);
-		setNodes(flowData.nodes);
-		setEdges(flowData.edges);
-		setNodePositions(flowData.nodePositions);
-	}, [policyId, handleDeleteNode, setNodes, setEdges]);
+	}, [setNodes, updateStepLaneHeights, apiRequests, setApiRequests, setEdges]);
 
 	// Move step up/down
 	const handleMoveStep = useCallback((stepId: string, direction: 'up' | 'down') => {
@@ -703,76 +714,67 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			const currentStepY = currentStep.position.y;
 			const swapStepY = swapStep.position.y;
 			
-			// Find processes belonging to each step
-			const nextStepAfterCurrent = stepIndex < steps.length - 1 ? steps[stepIndex + 1] : null;
-			const nextStepAfterSwap = swapIndex < steps.length - 1 ? steps[swapIndex + 1] : null;
+			// Calculate how much each step will move
+			const currentStepDelta = swapStepY - currentStepY;
+			const swapStepDelta = currentStepY - swapStepY;
 			
-			const currentStepEnd = nextStepAfterCurrent ? nextStepAfterCurrent.position.y : currentStepY + 500;
-			const swapStepEnd = nextStepAfterSwap ? nextStepAfterSwap.position.y : swapStepY + 500;
-			
-			// Collect processes for each step with their relative positions
-			const currentStepProcesses: { node: Node; relativeY: number; columnX: number }[] = [];
-			const swapStepProcesses: { node: Node; relativeY: number; columnX: number }[] = [];
+			// Collect processes belonging to each step BEFORE making any changes
+			const currentStepProcessIds = new Set<string>();
+			const swapStepProcessIds = new Set<string>();
 			
 			nds.forEach(node => {
 				if (node.type === 'processNode') {
 					const processY = node.position.y;
-					const processX = node.position.x;
 					
-					// Check if process belongs to current step
-					if (processY >= currentStepY + 10 && processY < currentStepEnd) {
-						currentStepProcesses.push({
-							node,
-							relativeY: processY - currentStepY,
-							columnX: processX
-						});
-					}
-					// Check if process belongs to swap step
-					else if (processY >= swapStepY + 10 && processY < swapStepEnd) {
-						swapStepProcesses.push({
-							node,
-							relativeY: processY - swapStepY,
-							columnX: processX
-						});
+					// Determine which step this process belongs to by checking Y ranges
+					for (let i = 0; i < steps.length; i++) {
+						const step = steps[i];
+						const stepStart = step.position.y;
+						const stepEnd = i < steps.length - 1 ? steps[i + 1].position.y : stepStart + 500;
+						
+						if (processY >= stepStart + 10 && processY < stepEnd) {
+							if (step.id === currentStep.id) {
+								currentStepProcessIds.add(node.id);
+							} else if (step.id === swapStep.id) {
+								swapStepProcessIds.add(node.id);
+							}
+							break;
+						}
 					}
 				}
 			});
 			
-			// Update nodes: swap steps and move their processes with relative positions
+			// Update nodes: swap steps and move their processes by the same delta
 			const updatedNodes = nds.map(node => {
-				// Move current step to swap position
+				// Move current step
 				if (node.id === currentStep.id) {
-					return { ...node, position: { ...node.position, y: swapStepY } };
+					return { ...node, position: { ...node.position, y: currentStepY + currentStepDelta } };
 				}
 				
-				// Move swap step to current position
+				// Move swap step
 				if (node.id === swapStep.id) {
-					return { ...node, position: { ...node.position, y: currentStepY } };
+					return { ...node, position: { ...node.position, y: swapStepY + swapStepDelta } };
 				}
 				
-				// Move processes with their relative positions preserved
+				// Move processes based on which step they belong to
 				if (node.type === 'processNode') {
-					// Check if this process belongs to current step
-					const currentProcess = currentStepProcesses.find(p => p.node.id === node.id);
-					if (currentProcess) {
-						return {
-							...node,
-							position: {
-								...node.position,
-								y: swapStepY + currentProcess.relativeY // New step Y + relative offset
-							}
+					if (currentStepProcessIds.has(node.id)) {
+						return { 
+							...node, 
+							position: { 
+								...node.position, 
+								y: node.position.y + currentStepDelta 
+							} 
 						};
 					}
 					
-					// Check if this process belongs to swap step
-					const swapProcess = swapStepProcesses.find(p => p.node.id === node.id);
-					if (swapProcess) {
-						return {
-							...node,
-							position: {
-								...node.position,
-								y: currentStepY + swapProcess.relativeY // New step Y + relative offset
-							}
+					if (swapStepProcessIds.has(node.id)) {
+						return { 
+							...node, 
+							position: { 
+								...node.position, 
+								y: node.position.y + swapStepDelta 
+							} 
 						};
 					}
 				}
@@ -873,16 +875,52 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 	const onSelectionChange = useCallback((params: any) => {
 		const selectedNodes = params.nodes || [];
 		const stepNode = selectedNodes.find((n: Node) => n.type === 'stepLane');
+		const processNode = selectedNodes.find((n: Node) => n.type === 'processNode');
+		const nfNode = selectedNodes.find((n: Node) => n.type === 'networkNode');
+		
 		setSelectedStepId(stepNode ? stepNode.id : null);
-	}, []);
+		setSelectedProcessNode(processNode || null);
+		
+		// Notify parent component - priority: process > nf > step
+		if (processNode && onProcessNodeSelect) {
+			onProcessNodeSelect(processNode);
+		} else if (nfNode && onNFNodeSelect) {
+			onNFNodeSelect(nfNode);
+			// Clear other selections
+			if (onProcessNodeSelect) onProcessNodeSelect(null);
+		} else if (stepNode && onStepSelect) {
+			onStepSelect(stepNode);
+			// Clear other selections
+			if (onProcessNodeSelect) onProcessNodeSelect(null);
+			if (onNFNodeSelect) onNFNodeSelect(null);
+		} else {
+			// Clear all selections
+			if (onProcessNodeSelect) onProcessNodeSelect(null);
+			if (onNFNodeSelect) onNFNodeSelect(null);
+			if (onStepSelect) onStepSelect(null);
+		}
+	}, [onProcessNodeSelect, onNFNodeSelect, onStepSelect]);
 
 	const onDragOver = useCallback((event: DragEvent) => {
 		event.preventDefault();
 		event.dataTransfer.dropEffect = 'move';
 	}, []);
 
-	// Add step programmatically (button click)
-	const handleAddStep = useCallback(() => {
+	// Toggle step form
+	const handleAddStepToggle = useCallback(() => {
+		setShowStepForm(!showStepForm);
+		if (!showStepForm) {
+			setNewStepName('');
+		}
+	}, [showStepForm]);
+
+	// Confirm adding step from modal
+	const handleConfirmAddStep = useCallback(() => {
+		if (!newStepName.trim()) {
+			alert('Please enter a step name');
+			return;
+		}
+
 		const steps = nodes.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
 		
 		// Calculate Y position for new step based on last step's height
@@ -908,30 +946,181 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			position: { x: 50, y: newY },
 			data: {
 				stepNumber: stepCounter,
-				label: 'New Step',
+				label: newStepName.trim(),
 				nodeCount: networkNodes.length,
 				lastNodeX: lastNodeX,
 				maxProcessesInColumn: 0, // No processes initially
 				onDelete: () => handleDeleteNode(newId),
+				onMoveUp: () => handleMoveStepUp(newId),
+				onMoveDown: () => handleMoveStepDown(newId),
 			},
 			draggable: false,
 		};
 		
 		setNodes((nds) => [...nds, newStepNode]);
 		setStepCounter(stepCounter + 1);
-	}, [nodes, stepCounter, handleDeleteNode, setNodes]);
+		setShowStepForm(false);
+		setNewStepName('');
+	}, [nodes, stepCounter, newStepName, handleDeleteNode, setNodes]);
 
-	// Add node programmatically (button click)
-	const handleAddNode = useCallback(() => {
+	// Move step up with validation
+	const handleMoveStepUp = useCallback((stepId: string) => {
+		const steps = nodes.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
+		const currentIndex = steps.findIndex(s => s.id === stepId);
+		
+		if (currentIndex <= 0) return; // Already at top
+		
+		// Check if any API response in the step above would violate the rule
+		const stepAbove = steps[currentIndex - 1];
+		const currentStep = steps[currentIndex];
+		
+		// Find all API requests where response is in step above and request is in current or below
+		for (const [requestId, apiRequest] of Object.entries(apiRequests)) {
+			if (apiRequest.responseEdgeId) {
+				// Find response sender nodes (they have 'sender-' prefix with '-resp' in the middle)
+				const responseSenderNodes = nodes.filter(n => 
+					n.id.includes(requestId) && n.id.includes('resp') && n.id.includes('sender')
+				);
+				
+				// Check if response is in step above
+				const responseInStepAbove = responseSenderNodes.some(n => n.parentId === stepAbove.id);
+				
+				if (responseInStepAbove && apiRequest.stepId === currentStep.id) {
+					alert('Cannot move step up: API Response in the step above must come after its Request!');
+					return;
+				}
+			}
+		}
+		
+		// Swap positions and move all child processes
+		const stepAboveY = stepAbove.position.y;
+		const currentStepY = currentStep.position.y;
+		
+		setNodes(nds => {
+			return nds.map(n => {
+				// Swap the step lanes
+				if (n.id === stepId) {
+					return { ...n, position: { ...n.position, y: stepAboveY } };
+				}
+				if (n.id === stepAbove.id) {
+					return { ...n, position: { ...n.position, y: currentStepY } };
+				}
+				
+				// Move child processes of current step up
+				if (n.parentId === stepId) {
+					const deltaY = stepAboveY - currentStepY;
+					return { ...n, position: { ...n.position, y: n.position.y + deltaY } };
+				}
+				
+				// Move child processes of step above down
+				if (n.parentId === stepAbove.id) {
+					const deltaY = currentStepY - stepAboveY;
+					return { ...n, position: { ...n.position, y: n.position.y + deltaY } };
+				}
+				
+				return n;
+			});
+		});
+	}, [nodes, apiRequests, setNodes]);
+
+	// Move step down with validation
+	const handleMoveStepDown = useCallback((stepId: string) => {
+		const steps = nodes.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
+		const currentIndex = steps.findIndex(s => s.id === stepId);
+		
+		if (currentIndex < 0 || currentIndex >= steps.length - 1) return; // Already at bottom
+		
+		// Check if any API request in current step has response in step below
+		const currentStep = steps[currentIndex];
+		const stepBelow = steps[currentIndex + 1];
+		
+		// Find all API requests in current step that have responses in step below
+		for (const [requestId, apiRequest] of Object.entries(apiRequests)) {
+			if (apiRequest.responseEdgeId && apiRequest.stepId === currentStep.id) {
+				// Find response sender nodes
+				const responseSenderNodes = nodes.filter(n => 
+					n.id.includes(requestId) && n.id.includes('resp') && n.id.includes('sender')
+				);
+				
+				// Check if response is in step below
+				const responseInStepBelow = responseSenderNodes.some(n => n.parentId === stepBelow.id);
+				
+				if (responseInStepBelow) {
+					alert('Cannot move step down: API Request must come before its Response!');
+					return;
+				}
+			}
+		}
+		
+		// Swap positions and move all child processes
+		const currentStepY = currentStep.position.y;
+		const stepBelowY = stepBelow.position.y;
+		
+		setNodes(nds => {
+			return nds.map(n => {
+				// Swap the step lanes
+				if (n.id === stepId) {
+					return { ...n, position: { ...n.position, y: stepBelowY } };
+				}
+				if (n.id === stepBelow.id) {
+					return { ...n, position: { ...n.position, y: currentStepY } };
+				}
+				
+				// Move child processes of current step down
+				if (n.parentId === stepId) {
+					const deltaY = stepBelowY - currentStepY;
+					return { ...n, position: { ...n.position, y: n.position.y + deltaY } };
+				}
+				
+				// Move child processes of step below up
+				if (n.parentId === stepBelow.id) {
+					const deltaY = currentStepY - stepBelowY;
+					return { ...n, position: { ...n.position, y: n.position.y + deltaY } };
+				}
+				
+				return n;
+			});
+		});
+	}, [nodes, apiRequests, setNodes]);
+
+	// Initialize flow data
+	React.useEffect(() => {
+		const flowData = getInitialFlowData(policyId, handleDeleteNode, handleMoveStepUp, handleMoveStepDown);
+		setNodes(flowData.nodes);
+		setEdges(flowData.edges);
+		setNodePositions(flowData.nodePositions);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [policyId]);
+
+	// Toggle node form
+	const handleAddNodeToggle = useCallback(() => {
+		setShowNodeForm(!showNodeForm);
+		if (!showNodeForm) {
+			setNewNodeName('');
+			setNewNodeType('');
+		}
+	}, [showNodeForm]);
+
+	// Confirm adding node from form
+	const handleConfirmAddNode = useCallback(() => {
+		if (!newNodeName.trim()) {
+			alert('Please enter a node name');
+			return;
+		}
+		if (!newNodeType) {
+			alert('Please select an NF type');
+			return;
+		}
+
 		const newX = nodePositions.length > 0 
-			? nodePositions[nodePositions.length - 1].x + 150 
+			? nodePositions[nodePositions.length - 1].x + NODE_SPACING 
 			: 250;
 		
 		const newId = `node-${nodeCounter}`;
 		const gradient = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
 		const lineColor = 'rgba(168, 237, 234, 0.3)';
 		
-		const newNodePos = { id: newId, x: newX, label: `NF${nodeCounter}`, gradient, lineColor };
+		const newNodePos = { id: newId, x: newX, label: newNodeName.trim(), gradient, lineColor };
 		setNodePositions([...nodePositions, newNodePos]);
 		
 		const networkNode: Node = {
@@ -939,7 +1128,8 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			type: 'networkNode',
 			position: { x: newX, y: 20 },
 			data: {
-				label: `NF${nodeCounter}`,
+				label: newNodeName.trim(),
+				nfType: newNodeType,
 				gradient,
 				onDelete: () => handleDeleteNode(newId),
 			},
@@ -964,7 +1154,10 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			return newNodes;
 		});
 		setNodeCounter(nodeCounter + 1);
-	}, [nodePositions, nodeCounter, handleDeleteNode, updateStepLaneWidths, setNodes]);
+		setShowNodeForm(false);
+		setNewNodeName('');
+		setNewNodeType('');
+	}, [nodePositions, nodeCounter, newNodeName, newNodeType, handleDeleteNode, updateStepLaneWidths, setNodes, showNodeForm]);
 
 	// Add process at specific node column
 	const handleAddProcessAtNode = useCallback((nodeId: string) => {
@@ -976,7 +1169,8 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 		const targetNode = nodePositions.find(np => np.id === nodeId);
 		if (!targetNode) return;
 		
-		const alignedX = targetNode.x;
+		// Center process box on the vertical dashed line (node center - half process width)
+		const alignedX = targetNode.x + NODE_WIDTH / 2 - 60; // 60 is half of process box width (120px)
 		const stepY = selectedStep.position.y;
 		
 		// Find next step Y to determine the range
@@ -1006,6 +1200,7 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			id: newId,
 			type: 'processNode',
 			position: { x: alignedX, y: alignedY },
+			draggable: false,
 			data: {
 				label: `${nfLabel} Process ${currentCounter}`,
 				background: '#F3F4F6',
@@ -1030,6 +1225,407 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 		setShowProcessMenu(false);
 	}, [selectedStepId, nodes, nodePositions, processCounter, nodeProcessCounters, handleDeleteNode, setNodes, updateStepLaneHeights]);
 
+	// Helper function to calculate closest handles between two nodes
+	const getClosestHandles = useCallback((sourcePos: { x: number, y: number }, targetPos: { x: number, y: number }) => {
+		const dx = targetPos.x - sourcePos.x;
+		const dy = targetPos.y - sourcePos.y;
+		
+		let sourceHandle = 'right';
+		let targetHandle = 'left';
+		
+		// Horizontal distance is greater than vertical
+		if (Math.abs(dx) > Math.abs(dy)) {
+			if (dx > 0) {
+				// Target is to the right
+				sourceHandle = 'right';
+				targetHandle = 'left';
+			} else {
+				// Target is to the left
+				sourceHandle = 'left';
+				targetHandle = 'right';
+			}
+		} else {
+			// Vertical distance is greater
+			if (dy > 0) {
+				// Target is below
+				sourceHandle = 'bottom';
+				targetHandle = 'top';
+			} else {
+				// Target is above
+				sourceHandle = 'top';
+				targetHandle = 'bottom';
+			}
+		}
+		
+		return { sourceHandle, targetHandle };
+	}, []);
+
+	const handleAddApiRequest = useCallback(() => {
+		if (!selectedStepId || !fromNodeId || !toNodeId || fromNodeId === toNodeId) return;
+		
+		const selectedStep = nodes.find(n => n.id === selectedStepId);
+		if (!selectedStep) return;
+		
+		const fromNode = nodePositions.find(np => np.id === fromNodeId);
+		const toNode = nodePositions.find(np => np.id === toNodeId);
+		if (!fromNode || !toNode) return;
+		
+		// Get NF labels
+		const fromNFNode = nodes.find(n => n.id === fromNodeId);
+		const toNFNode = nodes.find(n => n.id === toNodeId);
+		const fromLabel = fromNFNode?.data?.label || 'NF';
+		const toLabel = toNFNode?.data?.label || 'NF';
+		
+		const stepY = selectedStep.position.y;
+		
+		// Find next step Y to determine the range
+		const allSteps = nodes.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
+		const currentStepIndex = allSteps.findIndex(s => s.id === selectedStepId);
+		const nextStepY = currentStepIndex >= 0 && currentStepIndex < allSteps.length - 1 
+			? allSteps[currentStepIndex + 1].position.y 
+			: stepY + 500;
+		
+		// Calculate positions for sender (from node column)
+		const senderX = fromNode.x + NODE_WIDTH / 2 - 40; // 40 is half of 80px minWidth
+		const senderExistingProcesses = nodes.filter(n => 
+			n.type === 'processNode' && 
+			Math.abs(n.position.x - senderX) < 20 &&
+			n.position.y >= stepY + 10 && 
+			n.position.y < nextStepY
+		);
+		const senderStackIndex = senderExistingProcesses.length;
+		const senderY = selectedStep.position.y + 15 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		
+		// Calculate positions for receiver (to node column)
+		const receiverX = toNode.x + NODE_WIDTH / 2 - 40; // 40 is half of 80px minWidth
+		const receiverExistingProcesses = nodes.filter(n => 
+			n.type === 'processNode' && 
+			Math.abs(n.position.x - receiverX) < 20 &&
+			n.position.y >= stepY + 10 && 
+			n.position.y < nextStepY
+		);
+		const receiverStackIndex = receiverExistingProcesses.length;
+		const receiverY = selectedStep.position.y + 15 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		
+		const requestId = `api-req-${apiRequestCounter}`;
+		const senderId = `sender-${requestId}`;
+		const receiverId = `receiver-${requestId}`;
+		const edgeId = `edge-${requestId}`;
+		
+		// Create Sender process
+		const senderNode: Node = {
+			id: senderId,
+			type: 'processNode',
+			position: { x: senderX, y: senderY },
+			draggable: false,
+			data: {
+				label: `${fromLabel}\nSender`,
+				background: '#DBEAFE',
+				borderColor: '#3B82F6',
+				color: '#1E40AF',
+				onDelete: () => {
+					// Delete both sender and receiver
+					const responseSenderId = `sender-${requestId}-resp`;
+					const responseReceiverId = `receiver-${requestId}-resp`;
+					setNodes((nds) => nds.filter((n) => 
+						n.id !== senderId && 
+						n.id !== receiverId && 
+						n.id !== responseSenderId && 
+						n.id !== responseReceiverId
+					));
+					// Delete request edge and response edge if exists
+					setEdges((eds) => eds.filter((e) => {
+						const req = apiRequests[requestId];
+						return e.id !== edgeId && (!req?.responseEdgeId || e.id !== req.responseEdgeId);
+					}));
+					setApiRequests(prev => {
+						const newReqs = { ...prev };
+						delete newReqs[requestId];
+						return newReqs;
+					});
+				},
+			},
+		};
+		
+		// Create Receiver process
+		const receiverNode: Node = {
+			id: receiverId,
+			type: 'processNode',
+			position: { x: receiverX, y: receiverY },
+			draggable: false,
+			data: {
+				label: `${toLabel}\nReceiver`,
+				background: '#FED7AA',
+				borderColor: '#F97316',
+				color: '#C2410C',
+				onDelete: () => {
+					// Delete both sender and receiver
+					const responseSenderId = `sender-${requestId}-resp`;
+					const responseReceiverId = `receiver-${requestId}-resp`;
+					setNodes((nds) => nds.filter((n) => 
+						n.id !== senderId && 
+						n.id !== receiverId && 
+						n.id !== responseSenderId && 
+						n.id !== responseReceiverId
+					));
+					// Delete request edge and response edge if exists
+					setEdges((eds) => eds.filter((e) => {
+						const req = apiRequests[requestId];
+						return e.id !== edgeId && (!req?.responseEdgeId || e.id !== req.responseEdgeId);
+					}));
+					setApiRequests(prev => {
+						const newReqs = { ...prev };
+						delete newReqs[requestId];
+						return newReqs;
+					});
+				},
+			},
+		};
+		
+		// Calculate closest handles
+		const senderPos = { x: senderX, y: senderY };
+		const receiverPos = { x: receiverX, y: receiverY };
+		const handles = getClosestHandles(senderPos, receiverPos);
+		
+		// Create edge (animated arrow) - RED if no response yet
+		const newEdge: Edge = {
+			id: edgeId,
+			source: senderId,
+			target: receiverId,
+			sourceHandle: handles.sourceHandle,
+			targetHandle: handles.targetHandle,
+			type: 'smoothstep',
+			animated: true,
+			style: { stroke: '#EF4444', strokeWidth: 2.5 }, // Red for request without response
+			markerEnd: { type: MarkerType.ArrowClosed, color: '#EF4444', width: 20, height: 20 },
+			label: `API Req ${apiRequestCounter}`,
+			labelStyle: { fill: '#EF4444', fontWeight: 600, fontSize: 11 },
+			labelBgStyle: { fill: '#FEF2F2', fillOpacity: 0.9 },
+		};
+		
+		setNodes((nds) => {
+			const newNodes = [...nds, senderNode, receiverNode];
+			// Update step heights after adding remote call boxes
+			setTimeout(() => updateStepLaneHeights(newNodes), 10);
+			return newNodes;
+		});
+		
+		// Add edge after nodes are added
+		setTimeout(() => {
+			setEdges((eds) => [...eds, newEdge]);
+		}, 100);
+		
+		// Track this API request
+		setApiRequests(prev => ({
+			...prev,
+			[requestId]: {
+				requestEdgeId: edgeId,
+				responseEdgeId: null,
+				fromNodeId,
+				toNodeId,
+				stepId: selectedStepId
+			}
+		}));
+		
+		setApiRequestCounter(apiRequestCounter + 1);
+		
+		// Reset form
+		setFromNodeId('');
+		setToNodeId('');
+		setShowApiRequestForm(false);
+	}, [selectedStepId, fromNodeId, toNodeId, nodes, nodePositions, apiRequestCounter, setNodes, setEdges, updateStepLaneHeights]);
+
+	const handleAddApiResponse = useCallback(() => {
+		if (!selectedRequestId || !selectedStepId) return;
+		
+		const apiRequest = apiRequests[selectedRequestId];
+		if (!apiRequest || apiRequest.responseEdgeId) return; // Already has response
+		
+		const selectedStep = nodes.find(n => n.id === selectedStepId);
+		if (!selectedStep) return;
+		
+		// Validate that response step is after request step
+		const allSteps = nodes.filter(n => n.type === 'stepLane').sort((a, b) => a.position.y - b.position.y);
+		const requestStep = nodes.find(n => n.id === apiRequest.stepId);
+		if (!requestStep) return;
+		
+		if (selectedStep.position.y <= requestStep.position.y) {
+			alert('Response step must be after the request step!');
+			return;
+		}
+		
+		const fromNode = nodePositions.find(np => np.id === apiRequest.toNodeId); // Response goes reverse direction
+		const toNode = nodePositions.find(np => np.id === apiRequest.fromNodeId);
+		if (!fromNode || !toNode) return;
+		
+		// Get NF labels (reversed for response)
+		const fromNFNode = nodes.find(n => n.id === apiRequest.toNodeId);
+		const toNFNode = nodes.find(n => n.id === apiRequest.fromNodeId);
+		const fromLabel = fromNFNode?.data?.label || 'NF';
+		const toLabel = toNFNode?.data?.label || 'NF';
+		
+		const stepY = selectedStep.position.y;
+		
+		// Find next step Y
+		const currentStepIndex = allSteps.findIndex(s => s.id === selectedStepId);
+		const nextStepY = currentStepIndex >= 0 && currentStepIndex < allSteps.length - 1 
+			? allSteps[currentStepIndex + 1].position.y 
+			: stepY + 500;
+		
+		// Calculate positions for sender (reverse direction)
+		const senderX = fromNode.x + NODE_WIDTH / 2 - 40;
+		const senderExistingProcesses = nodes.filter(n => 
+			n.type === 'processNode' && 
+			Math.abs(n.position.x - senderX) < 20 &&
+			n.position.y >= stepY + 10 && 
+			n.position.y < nextStepY
+		);
+		const senderStackIndex = senderExistingProcesses.length;
+		const senderY = selectedStep.position.y + 15 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		
+		// Calculate positions for receiver
+		const receiverX = toNode.x + NODE_WIDTH / 2 - 40;
+		const receiverExistingProcesses = nodes.filter(n => 
+			n.type === 'processNode' && 
+			Math.abs(n.position.x - receiverX) < 20 &&
+			n.position.y >= stepY + 10 && 
+			n.position.y < nextStepY
+		);
+		const receiverStackIndex = receiverExistingProcesses.length;
+		const receiverY = selectedStep.position.y + 15 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		
+		const responseId = `${selectedRequestId}-resp`;
+		const senderId = `sender-${responseId}`;
+		const receiverId = `receiver-${responseId}`;
+		const edgeId = `edge-${responseId}`;
+		
+		// Create Sender process
+		const senderNode: Node = {
+			id: senderId,
+			type: 'processNode',
+			position: { x: senderX, y: senderY },
+			draggable: false,
+			data: {
+				label: `${fromLabel}\nSender`,
+				background: '#DBEAFE',
+				borderColor: '#3B82F6',
+				color: '#1E40AF',
+				onDelete: () => {
+					// Delete both sender and receiver of response
+					setNodes((nds) => nds.filter((n) => n.id !== senderId && n.id !== receiverId));
+					// Delete response edge and update request edge back to red
+					setEdges((eds) => eds.filter((e) => e.id !== edgeId).map(e => {
+						if (e.id === apiRequest.requestEdgeId) {
+							return {
+								...e,
+								style: { stroke: '#EF4444', strokeWidth: 2.5 },
+								markerEnd: { type: MarkerType.ArrowClosed, color: '#EF4444', width: 20, height: 20 },
+								labelStyle: { fill: '#EF4444', fontWeight: 600, fontSize: 11 },
+								labelBgStyle: { fill: '#FEF2F2', fillOpacity: 0.9 },
+							};
+						}
+						return e;
+					}));
+					setApiRequests(prev => ({
+						...prev,
+						[selectedRequestId]: { ...prev[selectedRequestId], responseEdgeId: null }
+					}));
+				},
+			},
+		};
+		
+		// Create Receiver process
+		const receiverNode: Node = {
+			id: receiverId,
+			type: 'processNode',
+			position: { x: receiverX, y: receiverY },
+			draggable: false,
+			data: {
+				label: `${toLabel}\nReceiver`,
+				background: '#FED7AA',
+				borderColor: '#F97316',
+				color: '#C2410C',
+				onDelete: () => {
+					// Delete both sender and receiver of response
+					setNodes((nds) => nds.filter((n) => n.id !== senderId && n.id !== receiverId));
+					// Delete response edge and update request edge back to red
+					setEdges((eds) => eds.filter((e) => e.id !== edgeId).map(e => {
+						if (e.id === apiRequest.requestEdgeId) {
+							return {
+								...e,
+								style: { stroke: '#EF4444', strokeWidth: 2.5 },
+								markerEnd: { type: MarkerType.ArrowClosed, color: '#EF4444', width: 20, height: 20 },
+								labelStyle: { fill: '#EF4444', fontWeight: 600, fontSize: 11 },
+								labelBgStyle: { fill: '#FEF2F2', fillOpacity: 0.9 },
+							};
+						}
+						return e;
+					}));
+					setApiRequests(prev => ({
+						...prev,
+						[selectedRequestId]: { ...prev[selectedRequestId], responseEdgeId: null }
+					}));
+				},
+			},
+		};
+		
+		// Calculate closest handles
+		const senderPos = { x: senderX, y: senderY };
+		const receiverPos = { x: receiverX, y: receiverY };
+		const handles = getClosestHandles(senderPos, receiverPos);
+		
+		// Create response edge - GREEN
+		const newEdge: Edge = {
+			id: edgeId,
+			source: senderId,
+			target: receiverId,
+			sourceHandle: handles.sourceHandle,
+			targetHandle: handles.targetHandle,
+			type: 'smoothstep',
+			animated: true,
+			style: { stroke: '#10B981', strokeWidth: 2.5 },
+			markerEnd: { type: MarkerType.ArrowClosed, color: '#10B981', width: 20, height: 20 },
+			label: `API Resp ${selectedRequestId.split('-')[2]}`,
+			labelStyle: { fill: '#10B981', fontWeight: 600, fontSize: 11 },
+			labelBgStyle: { fill: '#ECFDF5', fillOpacity: 0.9 },
+		};
+		
+		setNodes((nds) => {
+			const newNodes = [...nds, senderNode, receiverNode];
+			setTimeout(() => updateStepLaneHeights(newNodes), 10);
+			return newNodes;
+		});
+		
+		setTimeout(() => {
+			setEdges((eds) => {
+				// Update request edge to green
+				const updatedEdges = eds.map(e => {
+					if (e.id === apiRequest.requestEdgeId) {
+						return {
+							...e,
+							style: { stroke: '#10B981', strokeWidth: 2.5 },
+							markerEnd: { type: MarkerType.ArrowClosed, color: '#10B981', width: 20, height: 20 },
+							labelStyle: { ...e.labelStyle, fill: '#10B981' },
+							labelBgStyle: { fill: '#ECFDF5', fillOpacity: 0.9 },
+						};
+					}
+					return e;
+				});
+				return [...updatedEdges, newEdge];
+			});
+		}, 100);
+		
+		// Update API request tracking
+		setApiRequests(prev => ({
+			...prev,
+			[selectedRequestId]: { ...prev[selectedRequestId], responseEdgeId: edgeId }
+		}));
+		
+		// Reset form
+		setSelectedRequestId('');
+		setShowApiResponseForm(false);
+	}, [selectedRequestId, selectedStepId, apiRequests, nodes, nodePositions, setNodes, setEdges, updateStepLaneHeights]);
+
 	const onDrop = useCallback(
 		(event: DragEvent) => {
 			event.preventDefault();
@@ -1037,7 +1633,7 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			const type = event.dataTransfer.getData('application/reactflow');
 			if (!type || !reactFlowInstance) return;
 
-			// Only allow Process and Remote Call drops, and only when a step is selected
+			// Only allow Process and API Request drops, and only when a step is selected
 			if (!selectedStepId) return;
 			if (type !== 'process' && type !== 'remoteCall') return;
 
@@ -1062,8 +1658,8 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 					}
 				});
 				
-				// Align to node's vertical line X position and selected step Y
-				const alignedX = closestNodePos.x;
+				// Center process box on the vertical dashed line (node center - half process width)
+				const alignedX = closestNodePos.x + NODE_WIDTH / 2 - 60; // 60 is half of process box width (120px)
 				const alignedY = selectedStep.position.y + 15;
 				
 				const newId = `process-${processCounter}`;
@@ -1071,6 +1667,7 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 					id: newId,
 					type: 'processNode',
 					position: { x: alignedX, y: alignedY },
+					draggable: false,
 					data: {
 						label: 'New Process',
 						background: '#F3F4F6',
@@ -1078,85 +1675,13 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 						color: '#1F2937',
 						onDelete: () => handleDeleteNode(newId),
 					},
-				};
-				setProcessCounter(processCounter + 1);
-				setNodes((nds) => nds.concat(newNode));
-			} else if (type === 'remoteCall') {
-				const alignedY = selectedStep.position.y + 25;
-				const baseX = position.x - 100;
-				
-				const currentCounter = remoteCallCounter;
-				const senderId = `sender-${currentCounter}`;
-				const receiverId = `receiver-${currentCounter}`;
-				const edgeId = `edge-rc-${currentCounter}`;
-				
-				// Create Sender process (left)
-				const senderNode: Node = {
-					id: senderId,
-					type: 'processNode',
-					position: { x: baseX, y: alignedY },
-					data: {
-						label: 'Sender',
-						background: '#FEF3C7',
-						borderColor: '#F59E0B',
-						color: '#92400E',
-						onDelete: () => {
-							// Delete sender, receiver and edge together
-							setNodes((nds) => nds.filter((n) => 
-								n.id !== senderId && n.id !== receiverId
-							));
-							setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-						},
-					},
-				};
-				
-				// Create Receiver process (right)
-				const receiverNode: Node = {
-					id: receiverId,
-					type: 'processNode',
-					position: { x: baseX + 200, y: alignedY },
-					data: {
-						label: 'Receiver',
-						background: '#DBEAFE',
-						borderColor: '#3B82F6',
-						color: '#1E3A8A',
-						onDelete: () => {
-							// Delete sender, receiver and edge together
-							setNodes((nds) => nds.filter((n) => 
-								n.id !== senderId && n.id !== receiverId
-							));
-							setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-						},
-					},
-				};
-				
-				// Create edge (arrow) between them - straight line, no curves
-				const newEdge: Edge = {
-					id: edgeId,
-					source: senderId,
-					target: receiverId,
-					type: 'straight', // Straight line, no curves
-					animated: true,
-					style: { stroke: '#F97316', strokeWidth: 2.5 },
-					markerEnd: { type: MarkerType.ArrowClosed, color: '#F97316', width: 20, height: 20 },
-					label: 'API Call',
-					labelStyle: { fontSize: 10, fill: '#F97316', fontWeight: 600 },
-					labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
-				};
-				
-				// Add nodes first, then edge
-				setNodes((nds) => [...nds, senderNode, receiverNode]);
-				setTimeout(() => {
-					setEdges((eds) => [...eds, newEdge]);
-				}, 50); // Small delay to ensure nodes are rendered first
-				
-				setRemoteCallCounter(currentCounter + 1);
-			}
-		},
-		[reactFlowInstance, nodes, nodePositions, selectedStepId, processCounter, remoteCallCounter, handleDeleteNode, setNodes, setEdges]
-	);
-
-	const onDragStart = (event: DragEvent, nodeType: string) => {
+			};
+			setProcessCounter(processCounter + 1);
+			setNodes((nds) => nds.concat(newNode));
+		}
+	},
+	[reactFlowInstance, nodes, nodePositions, selectedStepId, processCounter, handleDeleteNode, setNodes]
+);	const onDragStart = (event: DragEvent, nodeType: string) => {
 		event.dataTransfer.setData('application/reactflow', nodeType);
 		event.dataTransfer.effectAllowed = 'move';
 	};
@@ -1176,7 +1701,7 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 					onSelectionChange={onSelectionChange}
 					nodeTypes={nodeTypes}
 					nodesDraggable={true}
-					nodesConnectable={true}
+					nodesConnectable={false}
 					elementsSelectable={true}
 					fitView
 					attributionPosition="bottom-right"
@@ -1207,52 +1732,162 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 			{/* Toolbox - anchored at bottom with 2 sections */}
 			<div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
 				<div className="flex gap-4">
-					{/* Flows Section - enabled when NO step is selected */}
+					{/* Flows Section - always enabled */}
 					<Card 
-						className={`shadow-2xl border-2 transition-all ${
-							selectedStepId === null 
-								? 'border-purple-400 bg-white' 
-								: 'border-gray-200 bg-gray-50 opacity-50'
-						}`}
+						className="shadow-2xl border-2 border-purple-400 bg-white transition-all"
 						bodyStyle={{ padding: '12px 16px' }}
 					>
 						<div className="flex flex-col gap-2">
 							<div className="text-xs font-bold text-purple-600 mb-1">FLOWS</div>
 							<div className="flex gap-2">
-								<button
-									onClick={handleAddStep}
-									disabled={selectedStepId !== null}
-									className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
-										selectedStepId === null
-											? 'border-purple-300 hover:bg-purple-50 cursor-pointer hover:scale-105'
-											: 'border-gray-200 cursor-not-allowed opacity-50'
-									}`}
-									style={{ minWidth: 90 }}
-								>
-									<div style={{ fontSize: 24, color: selectedStepId === null ? '#8B5CF6' : '#9CA3AF' }}>
-										<AppstoreOutlined />
+								{/* Add Step with form */}
+								<div className="relative">
+									<div
+										onClick={handleAddStepToggle}
+										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-purple-300 hover:bg-purple-50 cursor-pointer hover:scale-105 transition-all"
+										style={{ minWidth: 90 }}
+									>
+										<div style={{ fontSize: 24, color: '#8B5CF6' }}>
+											<AppstoreOutlined />
+										</div>
+										<span className="text-xs font-medium text-gray-700">
+											Add Step
+										</span>
 									</div>
-									<span className="text-xs font-medium" style={{ color: selectedStepId === null ? '#374151' : '#9CA3AF' }}>
-										Add Step
-									</span>
-								</button>
-								<button
-									onClick={handleAddNode}
-									disabled={selectedStepId !== null}
-									className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
-										selectedStepId === null
-											? 'border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105'
-											: 'border-gray-200 cursor-not-allowed opacity-50'
-									}`}
-									style={{ minWidth: 90 }}
-								>
-									<div style={{ fontSize: 24, color: selectedStepId === null ? '#3B82F6' : '#9CA3AF' }}>
-										<NodeIndexOutlined />
+									
+									{/* Add Step Form */}
+									{showStepForm && (
+										<div 
+											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-purple-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4"
+										>
+											<div className="text-xs font-bold text-gray-500 mb-3">Create New Step</div>
+											
+											<div className="space-y-3">
+												{/* Step Number */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">Step Number</label>
+													<div className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded">
+														<span className="text-lg font-bold text-purple-600">{stepCounter}</span>
+													</div>
+												</div>
+												
+												{/* Step Name Input */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">Step Name</label>
+													<Input
+														placeholder="Enter step name"
+														value={newStepName}
+														onChange={(e) => setNewStepName(e.target.value)}
+														onPressEnter={handleConfirmAddStep}
+														autoFocus
+														size="small"
+													/>
+												</div>
+												
+												{/* Action Buttons */}
+												<div className="flex gap-2 pt-2">
+													<button
+														onClick={handleConfirmAddStep}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-500 hover:bg-purple-600 rounded transition-colors"
+													>
+														Add
+													</button>
+													<button
+														onClick={() => {
+															setShowStepForm(false);
+															setNewStepName('');
+														}}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+													>
+														Cancel
+													</button>
+												</div>
+											</div>
+										</div>
+									)}
+								</div>
+								
+								{/* Add Node with form */}
+								<div className="relative">
+									<div
+										onClick={handleAddNodeToggle}
+										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
+										style={{ minWidth: 90 }}
+									>
+										<div style={{ fontSize: 24, color: '#3B82F6' }}>
+											<NodeIndexOutlined />
+										</div>
+										<span className="text-xs font-medium text-gray-700">
+											Add Node
+										</span>
 									</div>
-									<span className="text-xs font-medium" style={{ color: selectedStepId === null ? '#374151' : '#9CA3AF' }}>
-										Add Node
-									</span>
-								</button>
+									
+									{/* Add Node Form */}
+									{showNodeForm && (
+										<div 
+											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4"
+										>
+											<div className="text-xs font-bold text-gray-500 mb-3">Create New Node</div>
+											
+											<div className="space-y-3">
+												{/* Node Name Input */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">Node Name</label>
+													<Input
+														placeholder="Enter node name"
+														value={newNodeName}
+														onChange={(e) => setNewNodeName(e.target.value)}
+														onPressEnter={handleConfirmAddNode}
+														autoFocus
+														size="small"
+													/>
+												</div>
+												
+												{/* NF Type Select */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">NF Type</label>
+													<Select
+														placeholder="Select NF Type"
+														value={newNodeType || undefined}
+														onChange={(value) => setNewNodeType(value)}
+														style={{ width: '100%' }}
+														size="small"
+														options={[
+															{ value: 'AMF', label: 'AMF - Access and Mobility Management' },
+															{ value: 'SMF', label: 'SMF - Session Management' },
+															{ value: 'UPF', label: 'UPF - User Plane Function' },
+															{ value: 'PCF', label: 'PCF - Policy Control' },
+															{ value: 'UDM', label: 'UDM - Unified Data Management' },
+															{ value: 'AUSF', label: 'AUSF - Authentication Server' },
+															{ value: 'NEF', label: 'NEF - Network Exposure' },
+															{ value: 'NRF', label: 'NRF - Network Repository' },
+														]}
+													/>
+												</div>
+												
+												{/* Action Buttons */}
+												<div className="flex gap-2 pt-2">
+													<button
+														onClick={handleConfirmAddNode}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors"
+													>
+														Add
+													</button>
+													<button
+														onClick={() => {
+															setShowNodeForm(false);
+															setNewNodeName('');
+															setNewNodeType('');
+														}}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+													>
+														Cancel
+													</button>
+												</div>
+											</div>
+										</div>
+									)}
+								</div>
 							</div>
 						</div>
 					</Card>
@@ -1272,8 +1907,11 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 								{/* Add Process with dropdown menu */}
 								<div className="relative">
 									<div
-										onMouseEnter={() => selectedStepId !== null && setShowProcessMenu(true)}
-										onMouseLeave={() => setShowProcessMenu(false)}
+										onClick={() => {
+											if (selectedStepId !== null) {
+												setShowProcessMenu(!showProcessMenu);
+											}
+										}}
 										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
 											selectedStepId !== null
 												? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
@@ -1293,8 +1931,6 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 									{showProcessMenu && selectedStepId !== null && (
 										<div 
 											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[120px]"
-											onMouseEnter={() => setShowProcessMenu(true)}
-											onMouseLeave={() => setShowProcessMenu(false)}
 										>
 											<div className="text-xs font-bold text-gray-500 px-3 py-2 border-b">Select NF</div>
 											<div className="py-1">
@@ -1316,22 +1952,177 @@ export default function PolicyFlowGraph({ policyId }: PolicyFlowGraphProps) {
 									)}
 								</div>
 								
-								<div
-									draggable={selectedStepId !== null}
-									onDragStart={(e: any) => selectedStepId !== null && onDragStart(e, 'remoteCall')}
-									className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-dashed transition-all ${
-										selectedStepId !== null
-											? 'border-orange-300 hover:bg-orange-50 cursor-move hover:scale-105'
-											: 'border-gray-200 cursor-not-allowed opacity-50'
-									}`}
-									style={{ minWidth: 90 }}
-								>
-									<div style={{ fontSize: 24, color: selectedStepId !== null ? '#F97316' : '#9CA3AF' }}>
-										<ApiOutlined />
+								{/* API Request with form */}
+								<div className="relative">
+									<div
+										onClick={() => {
+											if (selectedStepId !== null) {
+												setShowApiRequestForm(!showApiRequestForm);
+											}
+										}}
+										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
+											selectedStepId !== null
+												? 'border-orange-300 hover:bg-orange-50 cursor-pointer hover:scale-105'
+												: 'border-gray-200 cursor-not-allowed opacity-50'
+										}`}
+										style={{ minWidth: 90 }}
+									>
+										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#F97316' : '#9CA3AF' }}>
+											<ApiOutlined />
+										</div>
+										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
+											API Request
+										</span>
 									</div>
-									<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-										Remote Call
-									</span>
+									
+									{/* API Request Form */}
+									{showApiRequestForm && selectedStepId !== null && (
+										<div 
+											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-orange-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4"
+										>
+											<div className="text-xs font-bold text-gray-500 mb-3">Create API Request</div>
+											
+											<div className="space-y-3">
+												{/* From NF Select */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">From NF</label>
+													<select
+														value={fromNodeId}
+														onChange={(e) => setFromNodeId(e.target.value)}
+														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+													>
+														<option value="">Select...</option>
+														{nodePositions.map((nodePos) => (
+															<option key={nodePos.id} value={nodePos.id}>
+																{nodePos.label}
+															</option>
+														))}
+													</select>
+												</div>
+												
+												{/* To NF Select */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">To NF</label>
+													<select
+														value={toNodeId}
+														onChange={(e) => setToNodeId(e.target.value)}
+														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+													>
+														<option value="">Select...</option>
+														{nodePositions
+															.filter(np => np.id !== fromNodeId)
+															.map((nodePos) => (
+																<option key={nodePos.id} value={nodePos.id}>
+																	{nodePos.label}
+																</option>
+															))}
+													</select>
+												</div>
+												
+												{/* Action Buttons */}
+												<div className="flex gap-2 pt-2">
+													<button
+														onClick={handleAddApiRequest}
+														disabled={!fromNodeId || !toNodeId || fromNodeId === toNodeId}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed rounded transition-colors"
+													>
+														Add
+													</button>
+													<button
+														onClick={() => {
+															setShowApiRequestForm(false);
+															setFromNodeId('');
+															setToNodeId('');
+														}}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+													>
+														Cancel
+													</button>
+												</div>
+											</div>
+										</div>
+									)}
+								</div>
+								
+								{/* API Response with form */}
+								<div className="relative">
+									<div
+										onClick={() => {
+											if (selectedStepId !== null) {
+												setShowApiResponseForm(!showApiResponseForm);
+											}
+										}}
+										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
+											selectedStepId !== null
+												? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
+												: 'border-gray-200 cursor-not-allowed opacity-50'
+										}`}
+										style={{ minWidth: 90 }}
+									>
+										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#10B981' : '#9CA3AF' }}>
+											<ApiOutlined />
+										</div>
+										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
+											API Response
+										</span>
+									</div>
+									
+									{/* API Response Form */}
+									{showApiResponseForm && selectedStepId !== null && (
+										<div 
+											className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4"
+										>
+											<div className="text-xs font-bold text-gray-500 mb-3">Create API Response</div>
+											
+											<div className="space-y-3">
+												{/* Select API Request */}
+												<div>
+													<label className="block text-xs font-medium text-gray-700 mb-1">API Request</label>
+													<select
+														value={selectedRequestId}
+														onChange={(e) => setSelectedRequestId(e.target.value)}
+														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-300"
+													>
+														<option value="">Select...</option>
+														{Object.entries(apiRequests)
+															.filter(([_, req]) => {
+																// Filter: no response yet, and request step is before current step
+																if (req.responseEdgeId) return false;
+																const requestStep = nodes.find(n => n.id === req.stepId);
+																const currentStep = nodes.find(n => n.id === selectedStepId);
+																if (!requestStep || !currentStep) return false;
+																return requestStep.position.y < currentStep.position.y;
+															})
+															.map(([id, req]) => (
+																<option key={id} value={id}>
+																	{id} ({nodePositions.find(n => n.id === req.fromNodeId)?.label} → {nodePositions.find(n => n.id === req.toNodeId)?.label})
+																</option>
+															))}
+													</select>
+												</div>
+												
+												{/* Action Buttons */}
+												<div className="flex gap-2 pt-2">
+													<button
+														onClick={handleAddApiResponse}
+														disabled={!selectedRequestId}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed rounded transition-colors"
+													>
+														Add
+													</button>
+													<button
+														onClick={() => {
+															setShowApiResponseForm(false);
+															setSelectedRequestId('');
+														}}
+														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+													>
+														Cancel
+													</button>
+												</div>
+											</div>
+										</div>
+									)}
 								</div>
 							</div>
 						</div>
