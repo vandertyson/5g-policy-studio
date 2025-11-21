@@ -1,4 +1,4 @@
-@import "tailwindcss" source(".");
+@import "tailwindcss";
 
 @theme {
 	--font-sans:
@@ -60,4 +60,126 @@ body {
 
 .flow-collection-accordion .ant-collapse-content-box {
 	padding: 8px 16px !important;
+}
+
+/* Policy Tabs Styling */
+.policy-tabs .ant-tabs-nav {
+	margin-bottom: 0 !important;
+	display: flex !important;
+	width: 100% !important;
+}
+
+.policy-tabs .ant-tabs-nav-wrap {
+	width: 100% !important;
+}
+
+.policy-tabs .ant-tabs-nav-list {
+	width: 100% !important;
+	display: flex !important;
+}
+
+.policy-tabs .ant-tabs-nav::before {
+	border-bottom: 1px solid #E5E7EB !important;
+}
+
+.policy-tabs .ant-tabs-tab {
+	flex: 1 !important;
+	justify-content: center !important;
+	margin: 0 !important;
+	padding: 12px 0 !important;
+	border-radius: 0 !important;
+	min-width: 0 !important;
+}
+
+.policy-tabs .ant-tabs-tab.ant-tabs-tab-active {
+	background-color: #3B82F6 !important;
+}
+
+.policy-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+	color: #FFFFFF !important;
+	font-weight: 600 !important;
+}
+
+.policy-tabs .ant-tabs-tab-btn {
+	font-size: 15px !important;
+	font-weight: 500 !important;
+	color: #6B7280 !important;
+	width: 100% !important;
+	display: flex !important;
+	justify-content: center !important;
+}
+
+.policy-tabs .ant-tabs-ink-bar {
+	display: none !important;
+}
+
+/* Procedures Tree Styling */
+.procedures-tree .ant-tree-node-content-wrapper {
+	font-size: 13px !important;
+	padding: 4px 0 !important;
+}
+
+.procedures-tree .ant-tree-node-content-wrapper:hover {
+	background-color: #F3F4F6 !important;
+}
+
+.procedures-tree .ant-tree-node-selected .ant-tree-node-content-wrapper {
+	background-color: #DBEAFE !important;
+	color: #1D4ED8 !important;
+	font-weight: 500 !important;
+}
+
+.procedures-tree .ant-tree-indent-unit {
+	width: 16px !important;
+}
+
+.procedures-tree .ant-tree-switcher {
+	width: 16px !important;
+}
+
+/* Chatbox Styling */
+.chat-messages {
+	scroll-behavior: smooth;
+}
+
+.chat-message-user {
+	background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+}
+
+.chat-message-ai {
+	background: #F3F4F6;
+	border: 1px solid #E5E7EB;
+}
+
+.chat-typing-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.chat-typing-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background-color: #9CA3AF;
+	animation: chat-typing 1.4s infinite ease-in-out;
+}
+
+.chat-typing-dot:nth-child(2) {
+	animation-delay: 0.2s;
+}
+
+.chat-typing-dot:nth-child(3) {
+	animation-delay: 0.4s;
+}
+
+@keyframes chat-typing {
+	0%, 60%, 100% {
+		transform: translateY(0);
+		opacity: 0.4;
+	}
+	30% {
+		transform: translateY(-10px);
+		opacity: 1;
+	}
 }

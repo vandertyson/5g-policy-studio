@@ -133,7 +133,7 @@ const StepLane = ({ data, selected }: NodeProps) => {
 	// Calculate dynamic height based on max processes in any column
 	const maxProcessesInColumn = data.maxProcessesInColumn || 0;
 	const dynamicHeight = maxProcessesInColumn > 0 
-		? 15 + maxProcessesInColumn * PROCESS_HEIGHT + (maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 15
+		? 32 + maxProcessesInColumn * PROCESS_HEIGHT + (maxProcessesInColumn - 1) * PROCESS_VERTICAL_GAP + 8
 		: STEP_MIN_HEIGHT;
 	
 	return (
@@ -1226,7 +1226,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 		const stackIndex = existingProcessesInColumn.length;
 		// Position relative to parent step (not absolute)
 		const relativeX = alignedX - selectedStep.position.x;
-		const relativeY = 20 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const relativeY = 32 + (stackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Get current counter for this node, default to 1
 		const currentCounter = nodeProcessCounters[nodeId] || 1;
@@ -1332,7 +1332,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 			return Math.abs(absoluteX - senderX) < 20;
 		});
 		const senderStackIndex = senderExistingProcesses.length;
-		const senderY = selectedStep.position.y + 20 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const senderY = selectedStep.position.y + 32 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Calculate positions for receiver (to node column)
 		const receiverX = toNode.x + NODE_WIDTH / 2 - 40; // 40 is half of 80px minWidth
@@ -1342,7 +1342,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 			return Math.abs(absoluteX - receiverX) < 20;
 		});
 		const receiverStackIndex = receiverExistingProcesses.length;
-		const receiverY = selectedStep.position.y + 20 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const receiverY = selectedStep.position.y + 32 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		const requestId = `api-req-${apiRequestCounter}`;
 		const senderId = `sender-${requestId}`;
@@ -1527,7 +1527,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 			return Math.abs(absoluteX - senderX) < 20;
 		});
 		const senderStackIndex = senderExistingProcesses.length;
-		const senderY = selectedStep.position.y + 20 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const senderY = selectedStep.position.y + 32 + (senderStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		// Calculate positions for receiver
 		const receiverX = toNode.x + NODE_WIDTH / 2 - 40;
@@ -1537,7 +1537,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 			return Math.abs(absoluteX - receiverX) < 20;
 		});
 		const receiverStackIndex = receiverExistingProcesses.length;
-		const receiverY = selectedStep.position.y + 20 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
+		const receiverY = selectedStep.position.y + 32 + (receiverStackIndex * (PROCESS_HEIGHT + PROCESS_VERTICAL_GAP));
 		
 		const responseId = `${selectedRequestId}-resp`;
 		const senderId = `sender-${responseId}`;
@@ -1715,7 +1715,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 				
 				// Center process box on the vertical dashed line (node center - half process width)
 				const alignedX = closestNodePos.x + NODE_WIDTH / 2 - 60; // 60 is half of process box width (120px)
-				const alignedY = selectedStep.position.y + 15;
+				const alignedY = selectedStep.position.y + 32;
 				
 				const newId = `process-${processCounter}`;
 				const newNode: Node = {
@@ -1806,7 +1806,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 											<AppstoreOutlined />
 										</div>
 										<span className="text-xs font-medium text-gray-700">
-											Add Step
+											Step
 										</span>
 									</div>
 									
@@ -1873,7 +1873,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 											<NodeIndexOutlined />
 										</div>
 										<span className="text-xs font-medium text-gray-700">
-											Add Node
+											Node
 										</span>
 									</div>
 									
@@ -1978,7 +1978,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 											<BranchesOutlined />
 										</div>
 										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											Add Process
+											Process
 										</span>
 									</div>
 									
@@ -2026,7 +2026,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 											<ApiOutlined />
 										</div>
 										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											API Request
+											Request
 										</span>
 									</div>
 									
@@ -2118,7 +2118,7 @@ export default function PolicyFlowGraph({ policyId, flowData, onProcessNodeSelec
 											<ApiOutlined />
 										</div>
 										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											API Response
+											Response
 										</span>
 									</div>
 									
