@@ -1190,20 +1190,399 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 	}, [onProcessNodeSelect, onNFNodeSelect, onStepSelect]);
 
 	return (
-		<div className="relative w-full h-full">
-			{/* Test Control Panel */}
-			<div className="absolute top-4 right-4 z-20">
-				<Card className="shadow-lg" bodyStyle={{ padding: '12px' }}>
-					<div className="flex items-center gap-3">
-						<div className="flex items-center gap-2">
-							<ExperimentOutlined style={{ color: testMode ? '#10B981' : '#6B7280' }} />
-							<span className="text-sm font-medium">Test Mode</span>
-							{testMode && (
-								<Tag color="green">Active</Tag>
-							)}
-						</div>
+		<div className="relative w-full h-full flex flex-col">
+			{/* Flow Graph Section (2/3 height) */}
+			<div className="flex-1 relative" style={{ flex: '2 1 0%' }}>
+				<div ref={reactFlowWrapper} className="w-full h-full">
+					<ReactFlow
+						nodes={nodes}
+						edges={edges}
+						onNodesChange={onNodesChange}
+						onEdgesChange={onEdgesChange}
+						onInit={setReactFlowInstance}
+						onSelectionChange={onSelectionChange}
+						nodeTypes={nodeTypes}
+						nodesDraggable={false}
+						nodesConnectable={false}
+						elementsSelectable={true}
+						fitView
+						attributionPosition="bottom-right"
+						className={`bg-gradient-to-br ${testMode ? 'from-green-50 to-blue-50' : 'from-gray-50 to-gray-100'}`}
+					>
+						<Background
+							variant={BackgroundVariant.Dots}
+							gap={GRID_SIZE}
+							size={1.5}
+							color={testMode ? "#10b981" : "#94a3b8"}
+							style={{ opacity: testMode ? 0.2 : 0.3 }}
+						/>
+						<Controls className="bg-white border border-gray-200 rounded-lg shadow-lg" />
+						<MiniMap
+							nodeColor={(node) => {
+								if (node.type === 'networkNode') {
+									const nfType = node.data?.nfType;
+									if (nfType === 'PCF') return '#7C3AED';
+									return '#667eea';
+								}
+								if (node.type === 'stepLane') return testMode ? '#10B981' : '#8B5CF6';
+								if (node.type === 'processNode') return '#10B981';
+								return '#94A3B8';
+							}}
+							maskColor="rgba(0, 0, 0, 0.05)"
+							className="bg-white border border-gray-200 rounded-lg shadow-lg"
+						/>
+					</ReactFlow>
+				</div>
 
-						<Space>
+				{/* Toolbox - enhanced with test controls - anchored to flow graph section */}
+				<div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+					<div className="flex gap-4">
+						{/* Flows Section */}
+						<Card
+							className="shadow-2xl border-2 border-blue-400 bg-white transition-all"
+							bodyStyle={{ padding: '12px 16px' }}
+						>
+							<div className="flex flex-col gap-2">
+								<div className="text-xs font-bold text-blue-600 mb-1">FLOWS</div>
+								<div className="flex gap-2">
+									{/* Add Step */}
+									<div className="relative">
+										<div
+											onClick={() => setShowStepForm(!showStepForm)}
+											className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
+											style={{ minWidth: 90 }}
+										>
+											<div style={{ fontSize: 24, color: '#8B5CF6' }}>
+												<AppstoreOutlined />
+											</div>
+											<span className="text-xs font-medium text-gray-700">Step</span>
+										</div>
+
+										{/* Add Step Form */}
+										{showStepForm && (
+											<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4">
+												<div className="text-xs font-bold text-gray-500 mb-3">Create New Step</div>
+												<div className="space-y-3">
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">Step Name</label>
+														<Input
+															placeholder="Enter step name"
+															value={newStepName}
+															onChange={(e) => setNewStepName(e.target.value)}
+															onPressEnter={() => {
+																if (newStepName.trim()) {
+																	// Add step logic here
+																	setShowStepForm(false);
+																	setNewStepName('');
+																}
+															}}
+															autoFocus
+															size="small"
+														/>
+													</div>
+													<div className="flex gap-2 pt-2">
+														<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors">
+															Add
+														</button>
+														<button
+															onClick={() => {
+																setShowStepForm(false);
+																setNewStepName('');
+															}}
+															className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</div>
+										)}
+									</div>
+
+									{/* Add Node */}
+									<div className="relative">
+										<div
+											onClick={() => setShowNodeForm(!showNodeForm)}
+											className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
+											style={{ minWidth: 90 }}
+										>
+											<div style={{ fontSize: 24, color: '#3B82F6' }}>
+												<NodeIndexOutlined />
+											</div>
+											<span className="text-xs font-medium text-gray-700">Node</span>
+										</div>
+
+										{/* Add Node Form */}
+										{showNodeForm && (
+											<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4">
+												<div className="text-xs font-bold text-gray-500 mb-3">Create New Node</div>
+												<div className="space-y-3">
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">Node Name</label>
+														<Input
+															placeholder="Enter node name"
+															value={newNodeName}
+															onChange={(e) => setNewNodeName(e.target.value)}
+															autoFocus
+															size="small"
+														/>
+													</div>
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">NF Type</label>
+														<Select
+															value={newNodeType || undefined}
+															onChange={(value) => setNewNodeType(value)}
+															style={{ width: '100%' }}
+															size="small"
+															options={[
+																{ value: 'AMF', label: 'AMF - Access and Mobility Management' },
+																{ value: 'SMF', label: 'SMF - Session Management' },
+																{ value: 'UPF', label: 'UPF - User Plane Function' },
+																{ value: 'PCF', label: 'PCF - Policy Control' },
+																{ value: 'UDM', label: 'UDM - Unified Data Management' },
+																{ value: 'AUSF', label: 'AUSF - Authentication Server' },
+																{ value: 'NEF', label: 'NEF - Network Exposure' },
+																{ value: 'NRF', label: 'NRF - Network Repository' },
+																{ value: 'UE', label: 'UE - User Equipment' },
+															]}
+														/>
+													</div>
+													<div className="flex gap-2 pt-2">
+														<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors">
+															Add
+														</button>
+														<button
+															onClick={() => {
+																setShowNodeForm(false);
+																setNewNodeName('');
+																setNewNodeType('');
+															}}
+															className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						</Card>
+
+						{/* Steps Section */}
+						<Card
+							className={`shadow-2xl border-2 transition-all ${
+								selectedStepId !== null
+									? 'border-green-400 bg-white'
+									: 'border-gray-200 bg-gray-50 opacity-50'
+							}`}
+							bodyStyle={{ padding: '12px 16px' }}
+						>
+							<div className="flex flex-col gap-2">
+								<div className="text-xs font-bold text-green-600 mb-1">STEPS</div>
+								<div className="flex gap-2">
+									{/* Add Process */}
+									<div className="relative">
+										<div
+											onClick={() => {
+												if (selectedStepId !== null) {
+													setShowProcessMenu(!showProcessMenu);
+												}
+											}}
+											className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
+												selectedStepId !== null
+													? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
+													: 'border-gray-200 cursor-not-allowed opacity-50'
+											}`}
+											style={{ minWidth: 90 }}
+										>
+											<div style={{ fontSize: 24, color: selectedStepId !== null ? '#10B981' : '#9CA3AF' }}>
+												<BranchesOutlined />
+											</div>
+											<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
+												Process
+											</span>
+										</div>
+
+										{/* Process menu */}
+										{showProcessMenu && selectedStepId !== null && (
+											<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[120px]">
+												<div className="text-xs font-bold text-gray-500 px-3 py-2 border-b">Select NF</div>
+												<div className="py-1">
+													{nodePositions.map((nodePos) => (
+														<button
+															key={nodePos.id}
+															onClick={() => {
+																// Add process logic here
+																setShowProcessMenu(false);
+															}}
+															className="w-full px-3 py-2 text-left text-sm hover:bg-green-50 transition-colors flex items-center gap-2"
+														>
+															<div
+																className="w-3 h-3 rounded-full"
+																style={{ background: nodePos.gradient }}
+															/>
+															<span style={{ color: '#374151', fontWeight: 600 }}>{nodePos.label}</span>
+														</button>
+													))}
+												</div>
+											</div>
+										)}
+									</div>
+
+									{/* API Request */}
+									<div className="relative">
+										<div
+											onClick={() => {
+												if (selectedStepId !== null) {
+													setShowApiRequestForm(!showApiRequestForm);
+												}
+											}}
+											className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
+												selectedStepId !== null
+													? 'border-orange-300 hover:bg-orange-50 cursor-pointer hover:scale-105'
+													: 'border-gray-200 cursor-not-allowed opacity-50'
+											}`}
+											style={{ minWidth: 90 }}
+										>
+											<div style={{ fontSize: 24, color: selectedStepId !== null ? '#6B7280' : '#9CA3AF' }}>
+												<ApiOutlined />
+											</div>
+											<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
+												Request
+											</span>
+										</div>
+
+										{/* API Request Form */}
+										{showApiRequestForm && selectedStepId !== null && (
+											<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-orange-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4">
+												<div className="text-xs font-bold text-gray-500 mb-3">Create API Request</div>
+												<div className="space-y-3">
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">From NF</label>
+														<select
+															value={fromNodeId}
+															onChange={(e) => setFromNodeId(e.target.value)}
+															className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+														>
+															<option value="">Select...</option>
+															{nodePositions.map((nodePos) => (
+																<option key={nodePos.id} value={nodePos.id}>
+																	{nodePos.label}
+																</option>
+															))}
+														</select>
+													</div>
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">To NF</label>
+														<select
+															value={toNodeId}
+															onChange={(e) => setToNodeId(e.target.value)}
+															className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+														>
+															<option value="">Select...</option>
+															{nodePositions
+																.filter(np => np.id !== fromNodeId)
+																.map((nodePos) => (
+																	<option key={nodePos.id} value={nodePos.id}>
+																		{nodePos.label}
+																	</option>
+																))}
+														</select>
+													</div>
+													<div className="flex gap-2 pt-2">
+														<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 rounded transition-colors">
+															Add
+														</button>
+														<button
+															onClick={() => {
+																setShowApiRequestForm(false);
+																setFromNodeId('');
+																setToNodeId('');
+															}}
+															className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</div>
+										)}
+									</div>
+
+									{/* API Response */}
+									<div className="relative">
+										<div
+											onClick={() => {
+												if (selectedStepId !== null) {
+													setShowApiResponseForm(!showApiResponseForm);
+												}
+											}}
+											className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
+												selectedStepId !== null
+													? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
+													: 'border-gray-200 cursor-not-allowed opacity-50'
+											}`}
+											style={{ minWidth: 90 }}
+										>
+											<div style={{ fontSize: 24, color: selectedStepId !== null ? '#10B981' : '#9CA3AF' }}>
+												<ApiOutlined />
+											</div>
+											<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
+												Response
+											</span>
+										</div>
+
+										{/* API Response Form */}
+										{showApiResponseForm && selectedStepId !== null && (
+											<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4">
+												<div className="text-xs font-bold text-gray-500 mb-3">Create API Response</div>
+												<div className="space-y-3">
+													<div>
+														<label className="block text-xs font-medium text-gray-700 mb-1">API Request</label>
+														<select
+															value={selectedRequestId}
+															onChange={(e) => setSelectedRequestId(e.target.value)}
+															className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-300"
+														>
+															<option value="">Select...</option>
+															{/* Request options would go here */}
+														</select>
+													</div>
+													<div className="flex gap-2 pt-2">
+														<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded transition-colors">
+															Add
+														</button>
+														<button
+															onClick={() => {
+																setShowApiResponseForm(false);
+																setSelectedRequestId('');
+															}}
+															className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						</Card>
+					</div>
+				</div>
+			</div>
+
+			{/* Simulation Window Section (1/3 height) */}
+			<div className="border-t border-gray-300 bg-white overflow-hidden" style={{ flex: '1 1 0%', minHeight: '150px', maxHeight: '25vh' }}>
+				<Tabs
+					defaultActiveKey="simulation"
+					className="h-full"
+					style={{ paddingLeft: '16px' }}
+					tabBarExtraContent={
+						<div className="flex items-center gap-2 mr-4">
 							{!testRunning && !testMode && (
 								<Button
 									type="primary"
@@ -1245,412 +1624,265 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 							>
 								Export
 							</Button>
-						</Space>
-					</div>
-
-					{testRunning && (
-						<div className="mt-3">
-							<div className="flex justify-between text-xs mb-1">
-								<span>Testing Progress</span>
-								<span>{Math.round(testProgress)}%</span>
-							</div>
-							<Progress percent={testProgress} size="small" status="active" />
 						</div>
-					)}
-
-					{testResult && (
-						<div className="mt-3 space-y-2">
-							<div className="text-xs font-medium text-green-600">Test Completed</div>
-							<div className="grid grid-cols-2 gap-2 text-xs">
-								<div>Total Messages: {testResult.performanceMetrics?.totalMessages}</div>
-								<div>Success Rate: {testResult.performanceMetrics?.successRate.toFixed(1)}%</div>
-								<div>Avg Response: {testResult.performanceMetrics?.averageResponseTime}ms</div>
-								<div>Errors: {testResult.performanceMetrics?.errorCount}</div>
-							</div>
-						</div>
-					)}
-				</Card>
-			</div>
-
-			<div ref={reactFlowWrapper} className="w-full h-full">
-				<ReactFlow
-					nodes={nodes}
-					edges={edges}
-					onNodesChange={onNodesChange}
-					onEdgesChange={onEdgesChange}
-					onInit={setReactFlowInstance}
-					onSelectionChange={onSelectionChange}
-					nodeTypes={nodeTypes}
-					nodesDraggable={false}
-					nodesConnectable={false}
-					elementsSelectable={true}
-					fitView
-					attributionPosition="bottom-right"
-					className={`bg-gradient-to-br ${testMode ? 'from-green-50 to-blue-50' : 'from-gray-50 to-gray-100'}`}
+					}
 				>
-					<Background
-						variant={BackgroundVariant.Dots}
-						gap={GRID_SIZE}
-						size={1.5}
-						color={testMode ? "#10b981" : "#94a3b8"}
-						style={{ opacity: testMode ? 0.2 : 0.3 }}
-					/>
-					<Controls className="bg-white border border-gray-200 rounded-lg shadow-lg" />
-					<MiniMap
-						nodeColor={(node) => {
-							if (node.type === 'networkNode') {
-								const nfType = node.data?.nfType;
-								if (nfType === 'PCF') return '#7C3AED';
-								return '#667eea';
-							}
-							if (node.type === 'stepLane') return testMode ? '#10B981' : '#8B5CF6';
-							if (node.type === 'processNode') return '#10B981';
-							return '#94A3B8';
-						}}
-						maskColor="rgba(0, 0, 0, 0.05)"
-						className="bg-white border border-gray-200 rounded-lg shadow-lg"
-					/>
-				</ReactFlow>
-			</div>
-
-			{/* Toolbox - enhanced with test controls */}
-			<div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-				<div className="flex gap-4">
-					{/* Flows Section */}
-					<Card
-						className="shadow-2xl border-2 border-blue-400 bg-white transition-all"
-						bodyStyle={{ padding: '12px 16px' }}
-					>
-						<div className="flex flex-col gap-2">
-							<div className="text-xs font-bold text-blue-600 mb-1">FLOWS</div>
-							<div className="flex gap-2">
-								{/* Add Step */}
-								<div className="relative">
-									<div
-										onClick={() => setShowStepForm(!showStepForm)}
-										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
-										style={{ minWidth: 90 }}
-									>
-										<div style={{ fontSize: 24, color: '#8B5CF6' }}>
-											<AppstoreOutlined />
-										</div>
-										<span className="text-xs font-medium text-gray-700">Step</span>
+					<Tabs.TabPane tab="Simulation Monitor" key="simulation">
+						<div className="overflow-y-auto" style={{ height: 'calc(25vh - 80px)' }}>
+							<div className="p-4 space-y-4">
+								{/* Test Status */}
+								<div className="flex items-center justify-between">
+									<h3 className="text-lg font-semibold text-gray-800">Simulation Status</h3>
+									<div className="flex items-center gap-2">
+										<div className={`w-3 h-3 rounded-full ${testMode ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+										<span className="text-sm font-medium">{testMode ? 'Active' : 'Inactive'}</span>
 									</div>
-
-									{/* Add Step Form */}
-									{showStepForm && (
-										<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4">
-											<div className="text-xs font-bold text-gray-500 mb-3">Create New Step</div>
-											<div className="space-y-3">
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">Step Name</label>
-													<Input
-														placeholder="Enter step name"
-														value={newStepName}
-														onChange={(e) => setNewStepName(e.target.value)}
-														onPressEnter={() => {
-															if (newStepName.trim()) {
-																// Add step logic here
-																setShowStepForm(false);
-																setNewStepName('');
-															}
-														}}
-														autoFocus
-														size="small"
-													/>
-												</div>
-												<div className="flex gap-2 pt-2">
-													<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors">
-														Add
-													</button>
-													<button
-														onClick={() => {
-															setShowStepForm(false);
-															setNewStepName('');
-														}}
-														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
-													>
-														Cancel
-													</button>
-												</div>
-											</div>
-										</div>
-									)}
 								</div>
 
-								{/* Add Node */}
-								<div className="relative">
-									<div
-										onClick={() => setShowNodeForm(!showNodeForm)}
-										className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
-										style={{ minWidth: 90 }}
-									>
-										<div style={{ fontSize: 24, color: '#3B82F6' }}>
-											<NodeIndexOutlined />
+								{/* Progress Bar */}
+								{testRunning && (
+									<div className="space-y-2">
+										<div className="flex justify-between text-sm">
+											<span>Test Progress</span>
+											<span>{Math.round(testProgress)}%</span>
 										</div>
-										<span className="text-xs font-medium text-gray-700">Node</span>
+										<Progress percent={testProgress} status="active" />
 									</div>
+								)}
 
-									{/* Add Node Form */}
-									{showNodeForm && (
-										<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50 min-w-[280px] p-4">
-											<div className="text-xs font-bold text-gray-500 mb-3">Create New Node</div>
-											<div className="space-y-3">
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">Node Name</label>
-													<Input
-														placeholder="Enter node name"
-														value={newNodeName}
-														onChange={(e) => setNewNodeName(e.target.value)}
-														autoFocus
-														size="small"
-													/>
-												</div>
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">NF Type</label>
-													<Select
-														value={newNodeType || undefined}
-														onChange={(value) => setNewNodeType(value)}
-														style={{ width: '100%' }}
-														size="small"
-														options={[
-															{ value: 'AMF', label: 'AMF - Access and Mobility Management' },
-															{ value: 'SMF', label: 'SMF - Session Management' },
-															{ value: 'UPF', label: 'UPF - User Plane Function' },
-															{ value: 'PCF', label: 'PCF - Policy Control' },
-															{ value: 'UDM', label: 'UDM - Unified Data Management' },
-															{ value: 'AUSF', label: 'AUSF - Authentication Server' },
-															{ value: 'NEF', label: 'NEF - Network Exposure' },
-															{ value: 'NRF', label: 'NRF - Network Repository' },
-															{ value: 'UE', label: 'UE - User Equipment' },
-														]}
-													/>
-												</div>
-												<div className="flex gap-2 pt-2">
-													<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors">
-														Add
-													</button>
-													<button
-														onClick={() => {
-															setShowNodeForm(false);
-															setNewNodeName('');
-															setNewNodeType('');
-														}}
-														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
-													>
-														Cancel
-													</button>
-												</div>
+								{/* Test Results */}
+								{testResult && (
+									<Card size="small" className="border-green-200 bg-green-50">
+										<div className="text-sm font-medium text-green-800 mb-2">Test Results</div>
+										<div className="grid grid-cols-2 gap-4 text-sm">
+											<div>
+												<span className="text-gray-600">Total Messages:</span>
+												<span className="ml-2 font-medium">{testResult.performanceMetrics?.totalMessages}</span>
+											</div>
+											<div>
+												<span className="text-gray-600">Success Rate:</span>
+												<span className="ml-2 font-medium">{testResult.performanceMetrics?.successRate.toFixed(1)}%</span>
+											</div>
+											<div>
+												<span className="text-gray-600">Avg Response:</span>
+												<span className="ml-2 font-medium">{testResult.performanceMetrics?.averageResponseTime}ms</span>
+											</div>
+											<div>
+												<span className="text-gray-600">Errors:</span>
+												<span className="ml-2 font-medium text-red-600">{testResult.performanceMetrics?.errorCount}</span>
 											</div>
 										</div>
-									)}
-								</div>
+									</Card>
+								)}
+
+								{/* NF States */}
+								{flowData && (
+									<div>
+										<h4 className="text-md font-semibold text-gray-700 mb-3">Network Function States</h4>
+										<div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+											{flowData.nodes.map((node) => (
+												<Card key={node.id} size="small" className="border-l-4 border-l-blue-500">
+													<div className="flex items-center justify-between mb-2">
+														<span className="font-medium text-sm">{node.name}</span>
+														<Tag color={
+															node.state?.currentState === 'IDLE' ? 'default' :
+															node.state?.currentState === 'PROCESSING' ? 'processing' :
+															node.state?.currentState === 'WAITING_RESPONSE' ? 'warning' :
+															node.state?.currentState === 'COMPLETED' ? 'success' :
+															node.state?.currentState === 'ERROR' ? 'error' : 'default'
+														}>
+															{node.state?.currentState || 'UNKNOWN'}
+														</Tag>
+													</div>
+													<div className="text-xs text-gray-500">
+														Last Transition: {node.state?.lastTransition ?
+															new Date(node.state.lastTransition).toLocaleTimeString() :
+															'N/A'
+														}
+													</div>
+													{node.state?.transitionHistory && node.state.transitionHistory.length > 0 && (
+														<div className="mt-2">
+															<div className="text-xs text-gray-600 mb-1">Recent Transitions:</div>
+															<div className="max-h-16 overflow-y-auto">
+																{node.state.transitionHistory.slice(-3).map((transition, idx) => (
+																	<div key={idx} className="text-xs text-gray-500">
+																		{transition.fromState} → {transition.toState}
+																	</div>
+																))}
+															</div>
+														</div>
+													)}
+												</Card>
+											))}
+										</div>
+									</div>
+								)}
 							</div>
 						</div>
-					</Card>
+					</Tabs.TabPane>
 
-					{/* Steps Section */}
-					<Card
-						className={`shadow-2xl border-2 transition-all ${
-							selectedStepId !== null
-								? 'border-green-400 bg-white'
-								: 'border-gray-200 bg-gray-50 opacity-50'
-						}`}
-						bodyStyle={{ padding: '12px 16px' }}
-					>
-						<div className="flex flex-col gap-2">
-							<div className="text-xs font-bold text-green-600 mb-1">STEPS</div>
-							<div className="flex gap-2">
-								{/* Add Process */}
-								<div className="relative">
-									<div
-										onClick={() => {
-											if (selectedStepId !== null) {
-												setShowProcessMenu(!showProcessMenu);
-											}
-										}}
-										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
-											selectedStepId !== null
-												? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
-												: 'border-gray-200 cursor-not-allowed opacity-50'
-										}`}
-										style={{ minWidth: 90 }}
-									>
-										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#10B981' : '#9CA3AF' }}>
-											<BranchesOutlined />
-										</div>
-										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											Process
-										</span>
+					<Tabs.TabPane tab="Message Flows" key="messages">
+						<div className="overflow-y-auto" style={{ height: 'calc(25vh - 80px)' }}>
+							<div className="p-4 space-y-3">
+								<h3 className="text-lg font-semibold text-gray-800">Message Flow Log</h3>
+
+								{messageFlows.length === 0 ? (
+									<div className="text-center py-8 text-gray-500">
+										<MessageOutlined style={{ fontSize: 48, opacity: 0.3 }} />
+										<div className="mt-2">No messages to display</div>
+										<div className="text-sm">Start a test to see message flows</div>
 									</div>
+								) : (
+									<div className="space-y-2">
+										{messageFlows.map((message, index) => (
+											<Card key={index} size="small" className={`border-l-4 ${
+												message.status === 'ERROR' ? 'border-l-red-500 bg-red-50' :
+												message.status === 'PROCESSED' ? 'border-l-green-500 bg-red-50' :
+												message.status === 'SENT' ? 'border-l-blue-500 bg-blue-50' :
+												'border-l-yellow-500 bg-yellow-50'
+											}`}>
+												<div className="flex items-start justify-between">
+													<div className="flex-1">
+														<div className="flex items-center gap-2 mb-1">
+															<Tag color={
+																message.status === 'ERROR' ? 'red' :
+																message.status === 'PROCESSED' ? 'green' :
+																message.status === 'SENT' ? 'blue' : 'yellow'
+															}>
+																{message.status}
+															</Tag>
+															<span className="text-xs font-medium">{message.messageId}</span>
+														</div>
+														<div className="text-sm text-gray-700 mb-1">
+															<span className="font-medium">{message.fromNode}</span>
+															<span className="mx-2">→</span>
+															<span className="font-medium">{message.toNode}</span>
+														</div>
+														<div className="text-xs text-gray-500">
+															{new Date(message.timestamp).toLocaleString()}
+															{message.responseTime && (
+																<span className="ml-2">• {message.responseTime}ms</span>
+															)}
+														</div>
+													</div>
+													<Button size="small" type="text" icon={<SettingOutlined />} />
+												</div>
 
-									{/* Process menu */}
-									{showProcessMenu && selectedStepId !== null && (
-										<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[120px]">
-											<div className="text-xs font-bold text-gray-500 px-3 py-2 border-b">Select NF</div>
-											<div className="py-1">
-												{nodePositions.map((nodePos) => (
-													<button
-														key={nodePos.id}
-														onClick={() => {
-															// Add process logic here
-															setShowProcessMenu(false);
-														}}
-														className="w-full px-3 py-2 text-left text-sm hover:bg-green-50 transition-colors flex items-center gap-2"
-													>
-														<div
-															className="w-3 h-3 rounded-full"
-															style={{ background: nodePos.gradient }}
-														/>
-														<span style={{ color: '#374151', fontWeight: 600 }}>{nodePos.label}</span>
-													</button>
-												))}
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* API Request */}
-								<div className="relative">
-									<div
-										onClick={() => {
-											if (selectedStepId !== null) {
-												setShowApiRequestForm(!showApiRequestForm);
-											}
-										}}
-										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
-											selectedStepId !== null
-												? 'border-orange-300 hover:bg-orange-50 cursor-pointer hover:scale-105'
-												: 'border-gray-200 cursor-not-allowed opacity-50'
-										}`}
-										style={{ minWidth: 90 }}
-									>
-										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#6B7280' : '#9CA3AF' }}>
-											<ApiOutlined />
-										</div>
-										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											Request
-										</span>
+												{message.errorMessage && (
+													<Alert
+														message={message.errorMessage}
+														type="error"
+														showIcon
+														className="mt-2"
+													/>
+												)}
+											</Card>
+										))}
 									</div>
-
-									{/* API Request Form */}
-									{showApiRequestForm && selectedStepId !== null && (
-										<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-orange-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4">
-											<div className="text-xs font-bold text-gray-500 mb-3">Create API Request</div>
-											<div className="space-y-3">
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">From NF</label>
-													<select
-														value={fromNodeId}
-														onChange={(e) => setFromNodeId(e.target.value)}
-														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
-													>
-														<option value="">Select...</option>
-														{nodePositions.map((nodePos) => (
-															<option key={nodePos.id} value={nodePos.id}>
-																{nodePos.label}
-															</option>
-														))}
-													</select>
-												</div>
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">To NF</label>
-													<select
-														value={toNodeId}
-														onChange={(e) => setToNodeId(e.target.value)}
-														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
-													>
-														<option value="">Select...</option>
-														{nodePositions
-															.filter(np => np.id !== fromNodeId)
-															.map((nodePos) => (
-																<option key={nodePos.id} value={nodePos.id}>
-																	{nodePos.label}
-																</option>
-															))}
-													</select>
-												</div>
-												<div className="flex gap-2 pt-2">
-													<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 rounded transition-colors">
-														Add
-													</button>
-													<button
-														onClick={() => {
-															setShowApiRequestForm(false);
-															setFromNodeId('');
-															setToNodeId('');
-														}}
-														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
-													>
-														Cancel
-													</button>
-												</div>
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* API Response */}
-								<div className="relative">
-									<div
-										onClick={() => {
-											if (selectedStepId !== null) {
-												setShowApiResponseForm(!showApiResponseForm);
-											}
-										}}
-										className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 transition-all ${
-											selectedStepId !== null
-												? 'border-green-300 hover:bg-green-50 cursor-pointer hover:scale-105'
-												: 'border-gray-200 cursor-not-allowed opacity-50'
-										}`}
-										style={{ minWidth: 90 }}
-									>
-										<div style={{ fontSize: 24, color: selectedStepId !== null ? '#10B981' : '#9CA3AF' }}>
-											<ApiOutlined />
-										</div>
-										<span className="text-xs font-medium" style={{ color: selectedStepId !== null ? '#374151' : '#9CA3AF' }}>
-											Response
-										</span>
-									</div>
-
-									{/* API Response Form */}
-									{showApiResponseForm && selectedStepId !== null && (
-										<div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-green-300 rounded-lg shadow-xl z-50 min-w-[200px] p-4">
-											<div className="text-xs font-bold text-gray-500 mb-3">Create API Response</div>
-											<div className="space-y-3">
-												<div>
-													<label className="block text-xs font-medium text-gray-700 mb-1">API Request</label>
-													<select
-														value={selectedRequestId}
-														onChange={(e) => setSelectedRequestId(e.target.value)}
-														className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-300"
-													>
-														<option value="">Select...</option>
-														{/* Request options would go here */}
-													</select>
-												</div>
-												<div className="flex gap-2 pt-2">
-													<button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded transition-colors">
-														Add
-													</button>
-													<button
-														onClick={() => {
-															setShowApiResponseForm(false);
-															setSelectedRequestId('');
-														}}
-														className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded transition-colors"
-													>
-														Cancel
-													</button>
-												</div>
-											</div>
-										</div>
-									)}
-								</div>
+								)}
 							</div>
 						</div>
-					</Card>
-				</div>
+					</Tabs.TabPane>
+
+					<Tabs.TabPane tab="PCF Policy Engine" key="pcf">
+						<div className="overflow-y-auto" style={{ height: 'calc(25vh - 80px)' }}>
+							<div className="p-4 space-y-4">
+								<h3 className="text-lg font-semibold text-gray-800">PCF Policy Evaluation</h3>
+
+								{flowData?.nodes.find(n => n.nfType === 'PCF')?.pcfConfig ? (
+									<div className="space-y-4">
+										{/* Policy Rules */}
+										<div>
+											<h4 className="text-md font-semibold text-gray-700 mb-3">Active Policy Rules</h4>
+											<div className="space-y-2">
+												{flowData.nodes.find(n => n.nfType === 'PCF')?.pcfConfig?.policyRules?.map((rule) => (
+													<Card key={rule.id} size="small" className="border-l-4 border-l-purple-500">
+														<div className="flex items-center justify-between mb-2">
+															<span className="font-medium">{rule.name}</span>
+															<div className="flex items-center gap-2">
+																<Switch checked={rule.enabled} size="small" disabled />
+																<Tag color="purple">Priority: {rule.priority}</Tag>
+															</div>
+														</div>
+														<div className="text-sm text-gray-600 mb-2">{rule.description}</div>
+
+														{/* Conditions */}
+														{rule.conditions.length > 0 && (
+															<div className="mb-2">
+																<div className="text-xs font-medium text-gray-700 mb-1">Conditions:</div>
+																<div className="flex flex-wrap gap-1">
+																	{rule.conditions.map((condition, idx) => (
+																		<Tag key={idx} >
+																			{condition.type} {condition.operator} {JSON.stringify(condition.value)}
+																		</Tag>
+																	))}
+																</div>
+															</div>
+														)}
+
+														{/* Actions */}
+														{rule.actions.length > 0 && (
+															<div>
+																<div className="text-xs font-medium text-gray-700 mb-1">Actions:</div>
+																<div className="flex flex-wrap gap-1">
+																	{rule.actions.map((action, idx) => (
+																		<Tag key={idx} color="blue" >
+																			{action.type}
+																		</Tag>
+																	))}
+																</div>
+															</div>
+														)}
+													</Card>
+												)) || (
+													<div className="text-gray-500 text-sm text-center py-4">
+														No policy rules configured
+													</div>
+												)}
+											</div>
+										</div>
+
+										{/* QoS Configuration */}
+										<Card size="small" title="QoS Configuration" className="border-l-4 border-l-green-500">
+											<div className="grid grid-cols-2 gap-4 text-sm">
+												<div>
+													<span className="text-gray-600">Max Bitrate:</span>
+													<span className="ml-2 font-medium">
+														{flowData.nodes.find(n => n.nfType === 'PCF')?.pcfConfig?.qosConfig?.maxBitrate} Mbps
+													</span>
+												</div>
+												<div>
+													<span className="text-gray-600">Guaranteed Bitrate:</span>
+													<span className="ml-2 font-medium">
+														{flowData.nodes.find(n => n.nfType === 'PCF')?.pcfConfig?.qosConfig?.guaranteedBitrate} Mbps
+													</span>
+												</div>
+												<div>
+													<span className="text-gray-600">Priority Level:</span>
+													<span className="ml-2 font-medium">
+														{flowData.nodes.find(n => n.nfType === 'PCF')?.pcfConfig?.qosConfig?.priorityLevel}
+													</span>
+												</div>
+												<div>
+													<span className="text-gray-600">QCI:</span>
+													<span className="ml-2 font-medium">
+														{flowData.nodes.find(n => n.nfType === 'PCF')?.pcfConfig?.qosConfig?.qci}
+													</span>
+												</div>
+											</div>
+										</Card>
+									</div>
+								) : (
+									<div className="text-center py-8 text-gray-500">
+										<ThunderboltOutlined style={{ fontSize: 48, opacity: 0.3 }} />
+										<div className="mt-2">PCF not configured</div>
+										<div className="text-sm">Configure PCF policies to see evaluation details</div>
+									</div>
+								)}
+							</div>
+						</div>
+					</Tabs.TabPane>
+				</Tabs>
 			</div>
 		</div>
 	);
