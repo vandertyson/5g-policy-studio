@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button, Card, Form, Input, Select, Collapse, Descriptions, List, Dropdown, Modal, Tabs, Tree } from "antd";
-import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined, SettingOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined, SettingOutlined, EllipsisOutlined } from "@ant-design/icons";
 import PolicyFlowGraph from "../../components/designer/PolicyFlowGraph";
 import { mockFlows, mockFlowsData } from "../../data/mockFlows";
 import type { FlowData } from "../../types/flow.types";
@@ -91,7 +91,7 @@ export default function PolicyDetail() {
 	// Modal state
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [newFlowName, setNewFlowName] = useState('');
-	const [selectedFolder, setSelectedFolder] = useState('');
+	const [selectedCategory, setSelectedCategory] = useState('');
 
 	// Active tab state
 	const [activeTab, setActiveTab] = useState('flow-design');
@@ -263,8 +263,14 @@ export default function PolicyDetail() {
 		// TODO: Implement folder creation
 	};
 
+	// Create new category
+	const handleCreateCategory = () => {
+		console.log('Create new category');
+		// TODO: Implement category creation
+	};
+
 	const handleModalOk = () => {
-		if (!newFlowName.trim() || !selectedFolder) return;
+		if (!newFlowName.trim() || !selectedCategory) return;
 
 		const newFlowId = `flow-${Date.now()}`;
 		const newFlow: FlowData = {
@@ -290,23 +296,23 @@ export default function PolicyDetail() {
 			version: '1.0.0',
 		});
 
-		// Add to selected folder
-		const folderFlows = folders[selectedFolder as keyof typeof folders];
-		const mainNumber = selectedFolder === 'session' ? 1 : selectedFolder === 'access' ? 2 : 3;
-		const subNumber = folderFlows.length + 1;
+		// Add to selected category
+		const categoryFlows = folders[selectedCategory as keyof typeof folders];
+		const mainNumber = selectedCategory === 'session' ? 1 : selectedCategory === 'access' ? 2 : 3;
+		const subNumber = categoryFlows.length + 1;
 		const newFlowItem = {
 			id: newFlowId,
 			name: `${mainNumber}.${subNumber}. ${newFlowName}`
 		};
 		setFolders(prev => ({
 			...prev,
-			[selectedFolder as keyof typeof folders]: [...prev[selectedFolder as keyof typeof folders], newFlowItem]
+			[selectedCategory as keyof typeof folders]: [...prev[selectedCategory as keyof typeof folders], newFlowItem]
 		}));
 
 		handleFlowSelect(newFlowId);
 		setIsModalVisible(false);
 		setNewFlowName('');
-		setSelectedFolder('');
+		setSelectedCategory('');
 	};
 
 	const menuItems = [
@@ -316,9 +322,9 @@ export default function PolicyDetail() {
 			onClick: handleCreateFlow,
 		},
 		{
-			key: 'new-folder',
-			label: 'New folder',
-			onClick: handleCreateFolder,
+			key: 'new-category',
+			label: 'New category',
+			onClick: handleCreateCategory,
 		},
 	];
 
@@ -452,18 +458,24 @@ export default function PolicyDetail() {
 							{/* Flow Collection - Top Half */}
 							<div className="flex-1 flex flex-col min-h-0">
 								{/* Header */}
-								<div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-									<div className="flex items-center justify-between">
-										<h3 className="text-sm font-medium text-gray-700">Flow Collection</h3>
+								<div className="sidebar-panel-header-with-menu sidebar-panel-header-blue">
+									<div className="flex items-center gap-2">
+										<div className="sidebar-panel-dot"></div>
+										<h3>Flow Collection</h3>
+									</div>
+									<Dropdown
+										menu={{ items: menuItems }}
+										placement="bottomRight"
+										trigger={['click']}
+									>
 										<Button
 											type="text"
 											size="small"
-											icon={<PlusOutlined className="text-gray-600" />}
-											onClick={handleCreateFlow}
-											className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 border-0"
-											title="New Flow"
+											icon={<EllipsisOutlined />}
+											className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 border-0"
+											title="More options"
 										/>
-									</div>
+									</Dropdown>
 								</div>
 
 								{/* Flow List */}
@@ -548,8 +560,9 @@ export default function PolicyDetail() {
 							{/* Procedures - Bottom Half */}
 							<div className="flex-1 flex flex-col min-h-0 border-t border-gray-200">
 								{/* Header */}
-								<div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-									<h3 className="text-sm font-medium text-gray-700">Procedures</h3>
+								<div className="sidebar-panel-header sidebar-panel-header-green">
+									<div className="sidebar-panel-dot"></div>
+									<h3>Procedures</h3>
 								</div>
 
 								{/* Procedures Tree */}
@@ -597,8 +610,9 @@ export default function PolicyDetail() {
 						<div className="w-96 bg-white border-l border-gray-200 flex flex-col">
 							{/* Properties - Top Half */}
 							<div className="flex-1 flex flex-col min-h-0">
-								<div className="p-4 border-b border-gray-200">
-									<h3 className="text-lg font-semibold mb-4">Properties</h3>
+								<div className="sidebar-panel-header sidebar-panel-header-purple">
+									<div className="sidebar-panel-dot"></div>
+									<h3>Properties</h3>
 								</div>
 								<div className="flex-1 overflow-y-auto p-4">
 									{selectedProcessNode ? (
@@ -868,8 +882,9 @@ export default function PolicyDetail() {
 
 							{/* AI Chat - Bottom Half */}
 							<div className="flex-1 flex flex-col min-h-0 border-t border-gray-200">
-								<div className="p-4 border-b border-gray-200">
-									<h3 className="text-lg font-semibold">AI Assistant</h3>
+								<div className="sidebar-panel-header sidebar-panel-header-orange">
+									<div className="sidebar-panel-dot"></div>
+									<h3>AI Assistant</h3>
 								</div>
 								<div className="flex-1 flex flex-col min-h-0">
 									{/* Chat Messages */}
@@ -1021,11 +1036,11 @@ export default function PolicyDetail() {
 							placeholder="Enter flow name"
 						/>
 					</Form.Item>
-					<Form.Item label="Folder" required>
+					<Form.Item label="Category" required>
 						<Select 
-							value={selectedFolder} 
-							onChange={setSelectedFolder}
-							placeholder="Select a folder"
+							value={selectedCategory} 
+							onChange={setSelectedCategory}
+							placeholder="Select a category"
 						>
 							<Select.Option value="session">Session Management</Select.Option>
 							<Select.Option value="access">Access & Mobility Policy</Select.Option>
