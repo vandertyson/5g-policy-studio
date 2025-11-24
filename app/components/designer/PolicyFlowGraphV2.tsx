@@ -31,7 +31,9 @@ import {
 	MessageOutlined,
 	ThunderboltOutlined,
 	ExperimentOutlined,
-	ExportOutlined
+	ExportOutlined,
+	ImportOutlined,
+    SearchOutlined
 } from '@ant-design/icons';
 import { Card, Input, Select, Button, Modal, Tabs, Form, Switch, InputNumber, Space, Tag, Alert, Progress } from 'antd';
 import { JsonEditor } from 'json-edit-react';
@@ -924,6 +926,7 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 	const [viewMode, setViewMode] = useState<'graph' | 'editor'>('graph');
 	const [jsonEditorValue, setJsonEditorValue] = useState<string>('');
 	const [jsonData, setJsonData] = useState<any>(null);
+	const [jsonSearchText, setJsonSearchText] = useState<string>('');
 
 	// Test flow functionality with enhanced state management
 	const startTestFlow = useCallback(async () => {
@@ -1241,29 +1244,26 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 		<div className="relative w-full h-full flex flex-col">
 			{/* Flow Graph Section (2/3 height) */}
 			<div className="flex-1 relative" style={{ flex: '2 1 0%' }}>
-				{/* Floating Toggle Button */}
-				<div className="absolute top-4 right-4 z-20">
-					<Button
-						type="primary"
-						size="small"
-						onClick={() => setViewMode(viewMode === 'graph' ? 'editor' : 'graph')}
-						className="shadow-lg font-medium"
-						style={{
-							background: viewMode === 'graph'
-								? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-								: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-							border: 'none',
-							borderRadius: '8px',
-							padding: '6px 16px',
-							transition: 'all 0.3s ease'
-						}}
-					>
-						{viewMode === 'graph' ? '📊 Graph Mode' : '✏️ Editor Mode'}
-					</Button>
-				</div>
-
 				{viewMode === 'graph' ? (
-					<div ref={reactFlowWrapper} className="w-full h-full">
+					<div ref={reactFlowWrapper} className="w-full h-full relative">
+						{/* Toggle Button in Graph Mode */}
+						<div className="absolute top-4 right-4 z-20">
+							<Button
+								type="primary"
+								size="small"
+								onClick={() => setViewMode('editor')}
+								className="shadow-lg font-medium"
+								style={{
+									background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+									border: 'none',
+									borderRadius: '8px',
+									padding: '6px 16px',
+									transition: 'all 0.3s ease'
+								}}
+							>
+								✏️ Editor Mode
+							</Button>
+						</div>
 						<ReactFlow
 							nodes={nodes}
 							edges={edges}
@@ -1311,29 +1311,83 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 									<h3 className="text-lg font-semibold text-gray-800">JSON Editor</h3>
 									<p className="text-sm text-gray-500">Changes are not automatically saved. Use Export to save your changes.</p>
 								</div>
-								<Button
-									type="primary"
-									size="small"
-									icon={<ExportOutlined />}
-									onClick={exportFlowToJSON}
-									title="Export flow to JSON for backend processing"
-									style={{
-										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-										border: 'none',
-										borderRadius: '6px'
-									}}
-								>
-									Export
-								</Button>
+								<div className="flex items-center gap-2">
+									<Button
+										type="primary"
+										size="small"
+										onClick={() => setViewMode('graph')}
+										className="shadow-lg font-medium"
+										style={{
+											background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+											border: 'none',
+											borderRadius: '8px',
+											padding: '6px 16px',
+											transition: 'all 0.3s ease'
+										}}
+									>
+										📊 Graph Mode
+									</Button>
+									<Button
+										type="default"
+										size="small"
+										icon={<ImportOutlined />}
+										onClick={() => {
+											// Import functionality will be implemented here
+											console.log('Import clicked');
+										}}
+										title="Import flow from JSON file"
+									>
+										Import
+									</Button>
+									<Button
+										type="primary"
+										size="small"
+										icon={<ExportOutlined />}
+										onClick={exportFlowToJSON}
+										title="Export flow to JSON for backend processing"
+										style={{
+											background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+											border: 'none',
+											borderRadius: '6px'
+										}}
+									>
+										Export
+									</Button>
+								</div>
 							</div>
 							<div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
-								<JsonEditor
-									data={flowData || {}}
-									onUpdate={({ newData }) => {
-										// Update the JSON editor value for export
-										setJsonEditorValue(JSON.stringify(newData, null, 2));
-									}}
-								/>
+								{/* Search input for JSON editor */}
+								<div className="p-3 border-b border-gray-200 bg-blue-50">
+									<div className="flex items-center gap-2">
+										<SearchOutlined style={{ color: '#3B82F6' }} />
+										<Input
+											placeholder="Search JSON data (keys, values, or both)..."
+											value={jsonSearchText}
+											onChange={(e) => setJsonSearchText(e.target.value)}
+											size="small"
+											allowClear
+											className="flex-1"
+											style={{ borderColor: '#3B82F6' }}
+										/>
+										{jsonSearchText && (
+											<span className="text-xs text-blue-600 font-medium">
+												Searching: "{jsonSearchText}"
+											</span>
+										)}
+									</div>
+								</div>
+								<div style={{ width: '100%', height: 'calc(100% - 60px)' }}>
+									<JsonEditor
+										data={flowData || {}}
+                                        minWidth="100%"
+										searchText={jsonSearchText}
+										searchFilter="all"
+										onUpdate={({ newData }) => {
+											// Update the JSON editor value for export
+											setJsonEditorValue(JSON.stringify(newData, null, 2));
+										}}
+									/>
+								</div>
 							</div>
 						</div>
 					</div>

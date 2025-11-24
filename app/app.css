@@ -174,10 +174,14 @@ body {
 }
 
 @keyframes chat-typing {
-	0%, 60%, 100% {
+
+	0%,
+	60%,
+	100% {
 		transform: translateY(0);
 		opacity: 0.4;
 	}
+
 	30% {
 		transform: translateY(-10px);
 		opacity: 1;
@@ -235,4 +239,11 @@ body {
 	line-height: 1.2;
 	font-size: 14px;
 	font-weight: 600;
+}
+
+.jer-editor-container  {
+	max-height: 42vh;
+	min-width: 100%;
+	/* Example height */
+	overflow-y: auto;
 }
