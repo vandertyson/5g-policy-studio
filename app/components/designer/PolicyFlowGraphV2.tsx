@@ -34,6 +34,7 @@ import {
 	ExportOutlined
 } from '@ant-design/icons';
 import { Card, Input, Select, Button, Modal, Tabs, Form, Switch, InputNumber, Space, Tag, Alert, Progress } from 'antd';
+import { JsonEditor } from 'json-edit-react';
 import type { FlowData, NFNodeProperties, PolicyRule, PolicyCondition, PolicyAction, MessageConfiguration, TestFlowResult, MessageFlowData } from '~/types/flow.types';
 
 interface PolicyFlowGraphV2Props {
@@ -919,6 +920,11 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 	const [apiRequests, setApiRequests] = useState<Record<string, { requestEdgeId: string, responseEdgeId: string | null, fromNodeId: string, toNodeId: string, stepId: string }>>({});
 	const [nodeProcessCounters, setNodeProcessCounters] = useState<Record<string, number>>({});
 
+	// View mode state
+	const [viewMode, setViewMode] = useState<'graph' | 'editor'>('graph');
+	const [jsonEditorValue, setJsonEditorValue] = useState<string>('');
+	const [jsonData, setJsonData] = useState<any>(null);
+
 	// Test flow functionality with enhanced state management
 	const startTestFlow = useCallback(async () => {
 		if (!flowData) return;
@@ -1106,43 +1112,86 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 
 	// Export flow to JSON for backend processing
 	const exportFlowToJSON = useCallback(() => {
-		if (!flowData) return;
+		try {
+			// Use the edited JSON if in editor mode, otherwise use original flowData
+			const dataToExport = viewMode === 'editor' ? JSON.parse(jsonEditorValue) : flowData;
 
-		const exportData = {
-			...flowData,
-			exportConfig: {
-				version: '1.0.0',
-				targetPlatform: 'JAVA_SPRING',
-				outputFormat: 'JSON',
-				codeGeneration: {
-					basePackage: 'com.example.nfpolicy',
-					mainClass: `${flowData.metadata.name.replace(/\s+/g, '')}FlowHandler`,
-					dependencies: [
-						'spring-boot-starter-web',
-						'spring-boot-starter-data-jpa',
-						'spring-kafka',
-						'com.fasterxml.jackson.core:jackson-databind'
-					],
-					buildConfig: {
-						buildTool: 'MAVEN',
-						javaVersion: '17',
-						springBootVersion: '3.2.0'
+			if (!dataToExport) return;
+
+			const exportData = {
+				...dataToExport,
+				exportConfig: {
+					version: '1.0.0',
+					targetPlatform: 'JAVA_SPRING',
+					outputFormat: 'JSON',
+					codeGeneration: {
+						basePackage: 'com.example.nfpolicy',
+						mainClass: `${dataToExport.metadata?.name?.replace(/\s+/g, '') || 'Flow'}FlowHandler`,
+						dependencies: [
+							'spring-boot-starter-web',
+							'spring-boot-starter-data-jpa',
+							'spring-kafka',
+							'com.fasterxml.jackson.core:jackson-databind'
+						],
+						buildConfig: {
+							buildTool: 'MAVEN',
+							javaVersion: '17',
+							springBootVersion: '3.2.0'
+						}
 					}
 				}
-			}
-		};
+			};
 
-		// Create and download JSON file
-		const dataStr = JSON.stringify(exportData, null, 2);
-		const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-		
-		const exportFileDefaultName = `${flowData.metadata.id}-flow-export.json`;
-		
-		const linkElement = document.createElement('a');
-		linkElement.setAttribute('href', dataUri);
-		linkElement.setAttribute('download', exportFileDefaultName);
-		linkElement.click();
-	}, [flowData]);
+			// Create and download JSON file
+			const dataStr = JSON.stringify(exportData, null, 2);
+			const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+			const exportFileDefaultName = `${dataToExport.metadata?.id || 'flow'}-flow-export.json`;
+
+			const linkElement = document.createElement('a');
+			linkElement.setAttribute('href', dataUri);
+			linkElement.setAttribute('download', exportFileDefaultName);
+			linkElement.click();
+		} catch (error) {
+			console.error('Error exporting JSON:', error);
+			// Fallback to original flowData if JSON parsing fails
+			if (flowData) {
+				const exportData = {
+					...flowData,
+					exportConfig: {
+						version: '1.0.0',
+						targetPlatform: 'JAVA_SPRING',
+						outputFormat: 'JSON',
+						codeGeneration: {
+							basePackage: 'com.example.nfpolicy',
+							mainClass: `${flowData.metadata.name.replace(/\s+/g, '')}FlowHandler`,
+							dependencies: [
+								'spring-boot-starter-web',
+								'spring-boot-starter-data-jpa',
+								'spring-kafka',
+								'com.fasterxml.jackson.core:jackson-databind'
+							],
+							buildConfig: {
+								buildTool: 'MAVEN',
+								javaVersion: '17',
+								springBootVersion: '3.2.0'
+							}
+						}
+					}
+				};
+
+				const dataStr = JSON.stringify(exportData, null, 2);
+				const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+				const exportFileDefaultName = `${flowData.metadata.id}-flow-export.json`;
+
+				const linkElement = document.createElement('a');
+				linkElement.setAttribute('href', dataUri);
+				linkElement.setAttribute('download', exportFileDefaultName);
+				linkElement.click();
+			}
+		}
+	}, [flowData, jsonEditorValue, viewMode]);
 
 	// Initialize flow data
 	React.useEffect(() => {
@@ -1158,14 +1207,13 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 		}
 	}, [policyId, flowData, testMode, messageFlows]);
 
-	// Update nodes when test mode changes
+	// Update JSON editor when flowData changes
 	React.useEffect(() => {
 		if (flowData) {
-			const reactFlowData = convertFlowDataToReactFlowV2(flowData, testMode, messageFlows);
-			setNodes(reactFlowData.nodes);
-			setEdges(reactFlowData.edges);
+			setJsonEditorValue(JSON.stringify(flowData, null, 2));
+			setJsonData(flowData);
 		}
-	}, [testMode, messageFlows]);
+	}, [flowData]);
 
 	const onSelectionChange = useCallback((params: any) => {
 		const selectedNodes = params.nodes || [];
@@ -1193,49 +1241,107 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 		<div className="relative w-full h-full flex flex-col">
 			{/* Flow Graph Section (2/3 height) */}
 			<div className="flex-1 relative" style={{ flex: '2 1 0%' }}>
-				<div ref={reactFlowWrapper} className="w-full h-full">
-					<ReactFlow
-						nodes={nodes}
-						edges={edges}
-						onNodesChange={onNodesChange}
-						onEdgesChange={onEdgesChange}
-						onInit={setReactFlowInstance}
-						onSelectionChange={onSelectionChange}
-						nodeTypes={nodeTypes}
-						nodesDraggable={false}
-						nodesConnectable={false}
-						elementsSelectable={true}
-						fitView
-						attributionPosition="bottom-right"
-						className={`bg-gradient-to-br ${testMode ? 'from-green-50 to-blue-50' : 'from-gray-50 to-gray-100'}`}
+				{/* Floating Toggle Button */}
+				<div className="absolute top-4 right-4 z-20">
+					<Button
+						type="primary"
+						size="small"
+						onClick={() => setViewMode(viewMode === 'graph' ? 'editor' : 'graph')}
+						className="shadow-lg font-medium"
+						style={{
+							background: viewMode === 'graph'
+								? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+								: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+							border: 'none',
+							borderRadius: '8px',
+							padding: '6px 16px',
+							transition: 'all 0.3s ease'
+						}}
 					>
-						<Background
-							variant={BackgroundVariant.Dots}
-							gap={GRID_SIZE}
-							size={1.5}
-							color={testMode ? "#10b981" : "#94a3b8"}
-							style={{ opacity: testMode ? 0.2 : 0.3 }}
-						/>
-						<Controls className="bg-white border border-gray-200 rounded-lg shadow-lg" />
-						<MiniMap
-							nodeColor={(node) => {
-								if (node.type === 'networkNode') {
-									const nfType = node.data?.nfType;
-									if (nfType === 'PCF') return '#7C3AED';
-									return '#667eea';
-								}
-								if (node.type === 'stepLane') return testMode ? '#10B981' : '#8B5CF6';
-								if (node.type === 'processNode') return '#10B981';
-								return '#94A3B8';
-							}}
-							maskColor="rgba(0, 0, 0, 0.05)"
-							className="bg-white border border-gray-200 rounded-lg shadow-lg"
-						/>
-					</ReactFlow>
+						{viewMode === 'graph' ? '📊 Graph Mode' : '✏️ Editor Mode'}
+					</Button>
 				</div>
 
-				{/* Toolbox - enhanced with test controls - anchored to flow graph section */}
-				<div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+				{viewMode === 'graph' ? (
+					<div ref={reactFlowWrapper} className="w-full h-full">
+						<ReactFlow
+							nodes={nodes}
+							edges={edges}
+							onNodesChange={onNodesChange}
+							onEdgesChange={onEdgesChange}
+							onInit={setReactFlowInstance}
+							onSelectionChange={onSelectionChange}
+							nodeTypes={nodeTypes}
+							nodesDraggable={false}
+							nodesConnectable={false}
+							elementsSelectable={true}
+							fitView
+							attributionPosition="bottom-right"
+							className={`bg-gradient-to-br ${testMode ? 'from-green-50 to-blue-50' : 'from-gray-50 to-gray-100'}`}
+						>
+							<Background
+								variant={BackgroundVariant.Dots}
+								gap={GRID_SIZE}
+								size={1.5}
+								color={testMode ? "#10b981" : "#94a3b8"}
+								style={{ opacity: testMode ? 0.2 : 0.3 }}
+							/>
+							<Controls className="bg-white border border-gray-200 rounded-lg shadow-lg" />
+							<MiniMap
+								nodeColor={(node) => {
+									if (node.type === 'networkNode') {
+										const nfType = node.data?.nfType;
+										if (nfType === 'PCF') return '#7C3AED';
+										return '#667eea';
+									}
+									if (node.type === 'stepLane') return testMode ? '#10B981' : '#8B5CF6';
+									if (node.type === 'processNode') return '#10B981';
+									return '#94A3B8';
+								}}
+								maskColor="rgba(0, 0, 0, 0.05)"
+								className="bg-white border border-gray-200 rounded-lg shadow-lg"
+							/>
+						</ReactFlow>
+					</div>
+				) : (
+					<div className="w-full h-full p-4 bg-gray-50">
+						<div className="h-full flex flex-col">
+							<div className="flex justify-between items-center mb-4">
+								<div>
+									<h3 className="text-lg font-semibold text-gray-800">JSON Editor</h3>
+									<p className="text-sm text-gray-500">Changes are not automatically saved. Use Export to save your changes.</p>
+								</div>
+								<Button
+									type="primary"
+									size="small"
+									icon={<ExportOutlined />}
+									onClick={exportFlowToJSON}
+									title="Export flow to JSON for backend processing"
+									style={{
+										background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+										border: 'none',
+										borderRadius: '6px'
+									}}
+								>
+									Export
+								</Button>
+							</div>
+							<div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
+								<JsonEditor
+									data={flowData || {}}
+									onUpdate={({ newData }) => {
+										// Update the JSON editor value for export
+										setJsonEditorValue(JSON.stringify(newData, null, 2));
+									}}
+								/>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Toolbox - only show in graph mode */}
+				{viewMode === 'graph' && (
+					<div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
 					<div className="flex gap-4">
 						{/* Flows Section */}
 						<Card
@@ -1573,6 +1679,7 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 						</Card>
 					</div>
 				</div>
+				)}
 			</div>
 
 			{/* Simulation Window Section (1/3 height) */}
@@ -1613,17 +1720,6 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 									Exit Test
 								</Button>
 							)}
-
-							{/* Export Button - always available */}
-							<Button
-								type="default"
-								size="small"
-								icon={<ExportOutlined />}
-								onClick={exportFlowToJSON}
-								title="Export flow to JSON for backend processing"
-							>
-								Export
-							</Button>
 						</div>
 					}
 				>
