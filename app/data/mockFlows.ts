@@ -72,11 +72,155 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ 
+				id: 'node-ue', 
+				name: 'UE', 
+				nfType: 'UE', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-UE-ID': 'ue-12345'
+					},
+					body: {
+						ueId: 'ue-12345',
+						serviceType: 'data',
+						requestedQoS: 'standard'
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-amf', 
+				name: 'AMF', 
+				nfType: 'AMF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-AMF-ID': 'amf-001'
+					},
+					body: {
+						amfId: 'amf-001',
+						registrationType: 'initial',
+						requestedFeatures: ['emergency-services', 'location-services']
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-smf', 
+				name: 'SMF', 
+				nfType: 'SMF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-SMF-ID': 'smf-001'
+					},
+					body: {
+						smfId: 'smf-001',
+						sessionType: 'pdu-session',
+						dnn: 'internet',
+						snssai: '1-0x01010203'
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-pcf', 
+				name: 'PCF', 
+				nfType: 'PCF', 
+				status: 'ACTIVE',
+				state: {
+					currentState: 'IDLE',
+					stateData: {},
+					lastTransition: '2025-11-19T10:00:00Z',
+					transitionHistory: []
+				},
+				pcfConfig: {
+					policyRules: [
+						{
+							id: 'rule-1',
+							name: 'Standard Data Traffic',
+							description: 'Default policy for standard data sessions',
+							conditions: [
+								{
+									type: 'SERVICE_TYPE',
+									operator: 'EQUALS',
+									value: 'data',
+									logicalOperator: 'AND'
+								}
+							],
+							actions: [
+								{
+									type: 'MODIFY_QOS',
+									parameters: {
+										qosProfile: 'QCI-9',
+										arp: 9,
+										maxBitrate: '50Mbps',
+										guaranteedBitrate: '1Mbps'
+									}
+								},
+								{
+									type: 'ALLOW',
+									parameters: {}
+								}
+							],
+							priority: 1,
+							enabled: true
+						}
+					],
+					defaultActions: [
+						{
+							type: 'ALLOW',
+							parameters: {}
+						}
+					],
+					qosConfig: {
+						maxBitrate: 100,
+						guaranteedBitrate: 10,
+						priorityLevel: 5,
+						arp: 6,
+						qci: 9
+					},
+					chargingConfig: {
+						chargingMethod: 'OFFLINE',
+						rate: 0.0005,
+						currency: 'USD',
+						unit: 'MB'
+					}
+				}
+			},
+			{ 
+				id: 'node-upf', 
+				name: 'UPF', 
+				nfType: 'UPF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-UPF-ID': 'upf-001'
+					},
+					body: {
+						upfId: 'upf-001',
+						interfaceType: 'N3',
+						tunnelInfo: {
+							localFTEID: 'fteid-123',
+							remoteFTEID: 'fteid-456'
+						}
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'PDU Session Request', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2'] },
@@ -157,11 +301,187 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ 
+				id: 'node-ue', 
+				name: 'UE', 
+				nfType: 'UE', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-UE-ID': 'ue-12345'
+					},
+					body: {
+						ueId: 'ue-12345',
+						serviceType: 'streaming',
+						requestedQoS: 'high-priority'
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-amf', 
+				name: 'AMF', 
+				nfType: 'AMF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-AMF-ID': 'amf-001'
+					},
+					body: {
+						amfId: 'amf-001',
+						registrationType: 'initial',
+						requestedFeatures: ['qos-negotiation', 'location-services']
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-smf', 
+				name: 'SMF', 
+				nfType: 'SMF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-SMF-ID': 'smf-001'
+					},
+					body: {
+						smfId: 'smf-001',
+						sessionType: 'pdu-session',
+						dnn: 'streaming',
+						snssai: '2-0x01020304'
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
+			{ 
+				id: 'node-pcf', 
+				name: 'PCF', 
+				nfType: 'PCF', 
+				status: 'ACTIVE',
+				pcfConfig: {
+					policyRules: [
+						{
+							id: 'rule-1',
+							name: 'Streaming QoS Priority',
+							description: 'High priority QoS for streaming services',
+							conditions: [
+								{
+									type: 'SERVICE_TYPE',
+									operator: 'EQUALS',
+									value: 'streaming',
+									logicalOperator: 'AND'
+								},
+								{
+									type: 'SUBSCRIBER_PROFILE',
+									operator: 'CONTAINS',
+									value: 'premium',
+									logicalOperator: 'OR'
+								}
+							],
+							actions: [
+								{
+									type: 'MODIFY_QOS',
+									parameters: {
+										qosProfile: 'QCI-2',
+										arp: 2,
+										maxBitrate: '100Mbps',
+										guaranteedBitrate: '20Mbps'
+									}
+								},
+								{
+									type: 'ALLOW',
+									parameters: {}
+								}
+							],
+							priority: 1,
+							enabled: true
+						},
+						{
+							id: 'rule-2',
+							name: 'Dynamic QoS Adjustment',
+							description: 'Adjust QoS based on network conditions',
+							conditions: [
+								{
+									type: 'NETWORK_CONGESTION',
+									operator: 'GREATER_THAN',
+									value: '80%'
+								}
+							],
+							actions: [
+								{
+									type: 'MODIFY_QOS',
+									parameters: {
+										qosProfile: 'QCI-6',
+										arp: 6,
+										maxBitrate: '50Mbps',
+										guaranteedBitrate: '5Mbps'
+									}
+								},
+								{
+									type: 'LOG',
+									parameters: {
+										level: 'INFO',
+										message: 'QoS adjusted due to high network load'
+									}
+								}
+							],
+							priority: 2,
+							enabled: true
+						}
+					],
+					defaultActions: [
+						{
+							type: 'ALLOW',
+							parameters: {}
+						}
+					],
+					qosConfig: {
+						maxBitrate: 100,
+						guaranteedBitrate: 20,
+						priorityLevel: 2,
+						arp: 2,
+						qci: 2
+					},
+					chargingConfig: {
+						chargingMethod: 'ONLINE',
+						rate: 0.002,
+						currency: 'USD',
+						unit: 'MB'
+					}
+				}
+			},
+			{ 
+				id: 'node-upf', 
+				name: 'UPF', 
+				nfType: 'UPF', 
+				status: 'ACTIVE',
+				messageConfig: {
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-UPF-ID': 'upf-001'
+					},
+					body: {
+						upfId: 'upf-001',
+						interfaceType: 'N3',
+						tunnelInfo: {
+							localFTEID: 'fteid-789',
+							remoteFTEID: 'fteid-012'
+						}
+					},
+					contentType: 'application/json',
+					acceptType: 'application/json'
+				}
+			},
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'QoS Request', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2'] },
@@ -254,11 +574,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'Call Setup', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2', 'proc-1-3'] },
@@ -322,11 +642,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'Registration Complete', type: 'SEQUENTIAL', processes: ['proc-1-1'] },
@@ -372,11 +692,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'Authorization Request', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2', 'proc-1-3'] },
@@ -421,11 +741,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'UE Context Request', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2'] },
@@ -481,11 +801,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'Policy Notification', type: 'SEQUENTIAL', processes: ['proc-1-1', 'proc-1-2'] },
@@ -541,11 +861,11 @@ export const mockFlowsData: Record<string, FlowData> = {
 			author: 'Admin',
 		},
 		nodes: [
-			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE' },
-			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE' },
-			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE' },
-			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE' },
-			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE' },
+			{ id: 'node-ue', name: 'UE', nfType: 'UE', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UE-ID': 'ue-12345' }, body: { ueId: 'ue-12345', serviceType: 'data', requestedQoS: 'standard' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-amf', name: 'AMF', nfType: 'AMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-AMF-ID': 'amf-001' }, body: { amfId: 'amf-001', registrationType: 'initial', requestedFeatures: ['emergency-services', 'location-services'] }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-smf', name: 'SMF', nfType: 'SMF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-SMF-ID': 'smf-001' }, body: { smfId: 'smf-001', sessionType: 'pdu-session', dnn: 'internet', snssai: '1-0x01010203' }, contentType: 'application/json', acceptType: 'application/json' } },
+			{ id: 'node-pcf', name: 'PCF', nfType: 'PCF', status: 'ACTIVE', pcfConfig: { policyRules: [{ id: 'rule-1', name: 'Default Policy', description: 'Default policy configuration', conditions: [{ type: 'SERVICE_TYPE', operator: 'EQUALS', value: 'data', logicalOperator: 'AND' }], actions: [{ type: 'ALLOW', parameters: {} }], priority: 1, enabled: true }], defaultActions: [{ type: 'ALLOW', parameters: {} }], qosConfig: { maxBitrate: 100, guaranteedBitrate: 10, priorityLevel: 5, arp: 6, qci: 9 }, chargingConfig: { chargingMethod: 'OFFLINE', rate: 0.0005, currency: 'USD', unit: 'MB' } } },
+			{ id: 'node-upf', name: 'UPF', nfType: 'UPF', status: 'ACTIVE', messageConfig: { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-UPF-ID': 'upf-001' }, body: { upfId: 'upf-001', interfaceType: 'N3', tunnelInfo: { localFTEID: 'fteid-123', remoteFTEID: 'fteid-456' } }, contentType: 'application/json', acceptType: 'application/json' } },
 		],
 		steps: [
 			{ id: 'step-1', stepNumber: 1, name: 'AF Request', type: 'SEQUENTIAL', processes: ['proc-1-1'] },

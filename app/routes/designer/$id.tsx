@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button, Card, Form, Input, Select, Collapse, Descriptions, List, Dropdown, Modal, Tabs, Tree } from "antd";
 import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined, SettingOutlined, EllipsisOutlined } from "@ant-design/icons";
-import PolicyFlowGraph from "../../components/designer/PolicyFlowGraph";
+import PolicyFlowGraphV2 from "../../components/designer/PolicyFlowGraphV2";
 import { mockFlows, mockFlowsData } from "../../data/mockFlows";
 import type { FlowData } from "../../types/flow.types";
 
@@ -588,7 +588,7 @@ export default function PolicyDetail() {
 						<div className="flex-1 p-6">
 							<Card className="h-full" bodyStyle={{ height: '100%', padding: 0 }}>
 								{currentFlowData ? (
-									<PolicyFlowGraph 
+									<PolicyFlowGraphV2 
 										policyId={policy.id}
 										flowData={currentFlowData}
 										onProcessNodeSelect={setSelectedProcessNode}
