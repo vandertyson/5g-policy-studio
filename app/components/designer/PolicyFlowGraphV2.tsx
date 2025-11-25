@@ -1250,18 +1250,17 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 						<div className="absolute top-4 right-4 z-20">
 							<Button
 								type="primary"
-								size="small"
 								onClick={() => setViewMode('editor')}
 								className="shadow-lg font-medium"
 								style={{
-									background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+									background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
 									border: 'none',
 									borderRadius: '8px',
-									padding: '6px 16px',
+									padding: '8px 20px',
 									transition: 'all 0.3s ease'
 								}}
 							>
-								✏️ Editor Mode
+								Editor
 							</Button>
 						</div>
 						<ReactFlow
@@ -1294,7 +1293,7 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 										if (nfType === 'PCF') return '#7C3AED';
 										return '#667eea';
 									}
-									if (node.type === 'stepLane') return testMode ? '#10B981' : '#8B5CF6';
+									if (node.type === 'stepLane') return testMode ? '#10B981' : '#3B82F6';
 									if (node.type === 'processNode') return '#10B981';
 									return '#94A3B8';
 								}}
@@ -1314,41 +1313,43 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 								<div className="flex items-center gap-2">
 									<Button
 										type="primary"
-										size="small"
 										onClick={() => setViewMode('graph')}
 										className="shadow-lg font-medium"
 										style={{
-											background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+											background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
 											border: 'none',
 											borderRadius: '8px',
-											padding: '6px 16px',
+											padding: '8px 20px',
 											transition: 'all 0.3s ease'
 										}}
 									>
-										📊 Graph Mode
+										Graph
 									</Button>
 									<Button
-										type="default"
-										size="small"
-										icon={<ImportOutlined />}
+										type="primary"
 										onClick={() => {
 											// Import functionality will be implemented here
 											console.log('Import clicked');
 										}}
 										title="Import flow from JSON file"
+										style={{
+											background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+											border: 'none',
+											borderRadius: '8px',
+											padding: '8px 20px'
+										}}
 									>
 										Import
 									</Button>
 									<Button
 										type="primary"
-										size="small"
-										icon={<ExportOutlined />}
 										onClick={exportFlowToJSON}
 										title="Export flow to JSON for backend processing"
 										style={{
-											background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+											background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
 											border: 'none',
-											borderRadius: '6px'
+											borderRadius: '8px',
+											padding: '8px 20px'
 										}}
 									>
 										Export
@@ -1412,7 +1413,7 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onProcessNodeSel
 											className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg border-2 border-blue-300 hover:bg-blue-50 cursor-pointer hover:scale-105 transition-all"
 											style={{ minWidth: 90 }}
 										>
-											<div style={{ fontSize: 24, color: '#8B5CF6' }}>
+											<div style={{ fontSize: 24, color: '#3B82F6' }}>
 												<AppstoreOutlined />
 											</div>
 											<span className="text-xs font-medium text-gray-700">Step</span>
