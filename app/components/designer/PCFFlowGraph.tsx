@@ -34,7 +34,7 @@ import type {
 	FlowViewConfig 
 } from '~/types/flow.types';
 
-interface PolicyFlowGraphV2Props {
+interface PCFFlowGraphProps {
 	policyId: number;
 	flowData?: FlowData;
 	onNodeSelect?: (node: Node | null) => void;
@@ -188,36 +188,41 @@ const convertToPCFCentricLayout = (flowData: FlowData, viewConfig: FlowViewConfi
 	const pcfNodes = flowData.nodes.filter(n => n.nfType === 'PCF' || n.nodeRole === 'PCF_LOGIC');
 	const mockNodes = flowData.nodes.filter(n => n.isMock || (n.nfType !== 'PCF' && n.nodeRole !== 'PCF_LOGIC'));
 
-	// PCF Logic Lane (top) - Position PCF nodes horizontally
-	let pcfX = 100;
+	// PCF Logic Lane (top)
 	pcfNodes.forEach((nfNode, index) => {
-		nodes.push({
-			id: nfNode.id,
-			type: 'pcfLogic',
-			position: { 
-				x: pcfX, 
-				y: 50  // Fixed Y for PCF lane
-			},
-			data: {
-				label: nfNode.name,
-				processType: nfNode.id === 'rating-engine' ? 'Rating Engine' : 'PCF Core',
-				ruleCount: nfNode.pcfConfig?.policyRules?.length || 0,
-				onDelete: () => console.log('Delete', nfNode.id),
-			},
+		const pcfProcesses = flowData.processes.filter(p => 
+			p.nodeId === nfNode.id && 
+			(p.type === 'pcf_evaluation' || p.type === 'pcf_decision' || p.type === 'pcf_action')
+		);
+
+		pcfProcesses.forEach((process, pIndex) => {
+			nodes.push({
+				id: process.id,
+				type: process.type === 'pcf_decision' ? 'decision' : 'pcfLogic',
+				position: { 
+					x: 100 + (index * NODE_SPACING) + (pIndex * (NODE_SPACING / 2)), 
+					y: 100 
+				},
+				data: {
+					label: process.label,
+					processType: process.type,
+					ruleCount: nfNode.pcfConfig?.policyRules?.length || 0,
+					evaluationTrace: process.pcfProcessData?.evaluationTrace?.[0],
+					onDelete: () => console.log('Delete', process.id),
+				},
+			});
 		});
-		pcfX += NODE_SPACING; // Move to next horizontal position
 	});
 
-	// Network Function Lane (bottom) - Position mock NF nodes horizontally
+	// Network Function Lane (bottom)
 	if (!viewConfig.collapseMockNodes) {
-		let nfX = 100;
 		mockNodes.forEach((nfNode, index) => {
 			nodes.push({
 				id: nfNode.id,
 				type: 'mockNF',
 				position: { 
-					x: nfX, 
-					y: PCF_LANE_HEIGHT + LANE_SPACING // Fixed Y for NF lane
+					x: 100 + (index * NODE_SPACING), 
+					y: PCF_LANE_HEIGHT + LANE_SPACING 
 				},
 				data: {
 					label: nfNode.name,
@@ -225,73 +230,36 @@ const convertToPCFCentricLayout = (flowData: FlowData, viewConfig: FlowViewConfi
 					collapsed: viewConfig.mode === 'pcf_focus',
 				},
 			});
-			nfX += NODE_SPACING; // Move to next horizontal position
 		});
 	}
 
-	// Use generated edges from flowData if available
-	if (flowData.edges && flowData.edges.length > 0) {
-		flowData.edges.forEach((edge) => {
-			edges.push({
-				id: edge.id,
-				source: edge.source,
-				target: edge.target,
-				label: edge.label,
-				type: edge.source === edge.target ? 'smoothstep' : 'default',
-				animated: edge.animated ?? true,
-				style: edge.style || { stroke: '#667eea', strokeWidth: 2 },
-				markerEnd: {
-					type: MarkerType.ArrowClosed,
-					color: edge.markerEnd?.color || '#667eea'
-				},
-				labelStyle: { 
-					fill: '#1F2937', 
-					fontWeight: 600,
-					fontSize: 12,
-					background: 'white',
-					padding: '4px 8px',
-					borderRadius: '4px'
-				},
-				labelBgStyle: {
-					fill: 'white',
-					fillOpacity: 0.95,
-					strokeWidth: 1,
-					stroke: '#E5E7EB'
-				},
-				labelBgPadding: [8, 4] as [number, number],
-				labelBgBorderRadius: 4
-			});
-		});
-	} else {
-		// Fallback: Create edges based on process connections (old logic)
-		flowData.processes.forEach((process) => {
-			if (process.apiType === 'request') {
-				const targetProcess = flowData.processes.find(p => 
-					p.apiType === 'response' && p.stepId === process.stepId
-				);
-				
-				if (targetProcess) {
-					edges.push({
-						id: `${process.id}-${targetProcess.id}`,
-						source: process.id,
-						target: targetProcess.id,
-						type: 'smoothstep',
-						animated: true,
-						style: { stroke: '#667eea', strokeWidth: 3 },
-						markerEnd: { type: MarkerType.ArrowClosed, color: '#667eea' },
-					});
-				}
+	// Create edges based on process connections
+	flowData.processes.forEach((process) => {
+		if (process.apiType === 'request') {
+			const targetProcess = flowData.processes.find(p => 
+				p.apiType === 'response' && p.stepId === process.stepId
+			);
+			
+			if (targetProcess) {
+				edges.push({
+					id: `${process.id}-${targetProcess.id}`,
+					source: process.id,
+					target: targetProcess.id,
+					type: 'smoothstep',
+					animated: true,
+					style: { stroke: '#667eea', strokeWidth: 3 },
+					markerEnd: { type: MarkerType.ArrowClosed, color: '#667eea' },
+				});
 			}
-		});
-	}
+		}
+	});
 
 	return { nodes, edges };
 };
 
-export default function PolicyFlowGraphV2({ policyId, flowData, onNodeSelect }: PolicyFlowGraphV2Props) {
+export default function PCFFlowGraph({ policyId, flowData, onNodeSelect }: PCFFlowGraphProps) {
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-	const [highlightedEdgeId, setHighlightedEdgeId] = useState<string | null>(null);
 	const [viewConfig, setViewConfig] = useState<FlowViewConfig>({
 		mode: 'full',
 		showTimeline: true,
@@ -306,28 +274,11 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onNodeSelect }: 
 	// Initialize layout
 	useEffect(() => {
 		if (flowData) {
-			console.log('FlowData:', flowData);
-			console.log('FlowData.nodes:', flowData.nodes);
-			console.log('FlowData.edges:', flowData.edges);
-			
 			const layout = convertToPCFCentricLayout(flowData, viewConfig);
-			console.log('Generated layout.nodes:', layout.nodes);
-			console.log('Generated layout.edges:', layout.edges);
-			
 			setNodes(layout.nodes);
-			// Apply highlight styling to edges
-			const styledEdges = layout.edges.map(edge => ({
-				...edge,
-				animated: edge.id === highlightedEdgeId,
-				style: {
-					...edge.style,
-					strokeWidth: edge.id === highlightedEdgeId ? 4 : (edge.style?.strokeWidth || 2),
-					opacity: highlightedEdgeId ? (edge.id === highlightedEdgeId ? 1 : 0.3) : 1,
-				}
-			}));
-			setEdges(styledEdges);
+			setEdges(layout.edges);
 		}
-	}, [flowData, viewConfig, highlightedEdgeId]);
+	}, [flowData, viewConfig]);
 
 	const startTest = useCallback(async () => {
 		setTestRunning(true);
@@ -474,94 +425,7 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onNodeSelect }: 
 				{/* Timeline & Metrics Sidebar */}
 				{viewConfig.showTimeline && (
 					<div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-						<Tabs defaultActiveKey="steps" className="h-full">
-							{/* Flow Steps Tab */}
-							<Tabs.TabPane tab="Flow Steps" key="steps">
-								<div className="p-4">
-									{flowData?.steps && flowData.steps.length > 0 ? (
-										<Timeline
-											items={flowData.steps.map((step) => ({
-												color: 'blue',
-												dot: (
-													<div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs">
-														{step.stepNumber}
-													</div>
-												),
-												children: (
-													<div className="pb-4">
-														<div className="font-semibold text-sm text-gray-900">{step.name}</div>
-														<div className="text-xs text-gray-500 mt-1">
-															{step.description}
-														</div>
-														<div className="flex gap-2 mt-2">
-															<Tag color="purple" className="text-xs">
-																{step.type}
-															</Tag>
-															{step.timeout && (
-																<Tag color="orange" className="text-xs">
-																	{step.timeout}ms timeout
-																</Tag>
-															)}
-														</div>
-													</div>
-												),
-											}))}
-										/>
-									) : (
-										<div className="text-center py-8 text-gray-400">
-											<ClockCircleOutlined style={{ fontSize: 48 }} />
-											<div className="mt-2">No flow steps defined</div>
-										</div>
-									)}
-								</div>
-							</Tabs.TabPane>
-
-							{/* Procedures Tab */}
-							<Tabs.TabPane tab="Procedures" key="procedures">
-								<div className="p-4">
-									{flowData?.edges && flowData.edges.length > 0 ? (
-										<div className="space-y-3">
-											{flowData.edges
-												.sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
-												.map((edge) => (
-													<div
-														key={edge.id}
-														className={`border rounded-lg p-3 cursor-pointer transition-all ${
-															highlightedEdgeId === edge.id
-																? 'border-blue-500 bg-blue-50 shadow-md'
-																: 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
-														}`}
-														onClick={() => setHighlightedEdgeId(edge.id === highlightedEdgeId ? null : edge.id)}
-													>
-														<div className="flex items-center gap-2">
-															<div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-																{edge.sequence || '?'}
-															</div>
-															<div className="flex-1">
-																<div className="text-sm font-semibold text-gray-900">
-																	{edge.procedureName || edge.label}
-																</div>
-																<div className="text-xs text-gray-500 mt-1">
-																	{flowData.nodes.find(n => n.id === edge.source)?.name || edge.source}
-																	{' ↔ '}
-																	{flowData.nodes.find(n => n.id === edge.target)?.name || edge.target}
-																</div>
-															</div>
-															<div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" style={{backgroundColor: edge.style?.stroke || '#3B82F6'}}></div>
-														</div>
-													</div>
-												))}
-										</div>
-									) : (
-										<div className="text-center py-8 text-gray-400">
-											<ExperimentOutlined style={{ fontSize: 48 }} />
-											<div className="mt-2">No procedures defined</div>
-										</div>
-									)}
-								</div>
-							</Tabs.TabPane>
-
-							{/* Execution Timeline Tab */}
+						<Tabs defaultActiveKey="timeline" className="h-full">
 							<Tabs.TabPane tab="Execution Timeline" key="timeline">
 								<div className="p-4">
 									{evaluationTraces.length === 0 ? (
@@ -596,8 +460,8 @@ export default function PolicyFlowGraphV2({ policyId, flowData, onNodeSelect }: 
 								</div>
 							</Tabs.TabPane>
 
-							{/* PCF Metrics Tab */}
-							<Tabs.TabPane tab="PCF Metrics" key="metrics">\n\t\t\t\t\t\t\t\t<div className="p-4 space-y-4">
+							<Tabs.TabPane tab="PCF Metrics" key="metrics">
+								<div className="p-4 space-y-4">
 									{!pcfMetrics ? (
 										<div className="text-center py-8 text-gray-400">
 											<ExperimentOutlined style={{ fontSize: 48 }} />

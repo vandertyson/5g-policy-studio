@@ -19,6 +19,9 @@ export interface NFNodeProperties {
 	port?: number;
 	protocol?: 'HTTP2' | 'HTTP1' | 'gRPC';
 	status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+	// Node role classification
+	nodeRole?: 'PCF_LOGIC' | 'MOCK_NF' | 'INTEGRATION';
+	isMock?: boolean;
 	// Message configuration for non-PCF nodes
 	messageConfig?: MessageConfiguration;
 	// PCF specific configuration
@@ -97,7 +100,7 @@ export interface ChargingConfiguration {
 
 export interface ProcessProperties {
 	id: string;
-	type: 'sender' | 'receiver' | 'process';
+	type: 'sender' | 'receiver' | 'process' | 'pcf_evaluation' | 'pcf_decision' | 'pcf_action';
 	nodeId: string; // Reference to NF node
 	stepId: string; // Reference to step
 	label: string;
@@ -111,6 +114,8 @@ export interface ProcessProperties {
 	priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 	// Message flow data for testing
 	messageData?: MessageFlowData;
+	// PCF-specific process data
+	pcfProcessData?: PCFProcessData;
 }
 
 export interface MessageFlowData {
@@ -155,11 +160,26 @@ export interface StepCodeMetadata {
 	dependencies?: string[];
 }
 
+export interface FlowEdge {
+	id: string;
+	source: string; // Node ID
+	target: string; // Node ID
+	label?: string; // Display label with sequence and procedure name
+	sequence?: number; // Step number in flow
+	procedureName?: string; // Name of the procedure (e.g., "Subscription Creation")
+	protocol?: string; // HTTP2, gRPC, etc.
+	animated?: boolean;
+	style?: Record<string, any>;
+	markerEnd?: any;
+	type?: string; // Edge type for ReactFlow
+}
+
 export interface FlowData {
 	metadata: FlowMetadata;
 	nodes: NFNodeProperties[];
 	steps: StepProperties[];
 	processes: ProcessProperties[];
+	edges?: FlowEdge[]; // Message flows between nodes
 	// Export and code generation
 	exportConfig?: ExportConfiguration;
 }
@@ -213,4 +233,43 @@ export interface TestFlowResult {
 		successRate: number;
 		errorCount: number;
 	};
+	// PCF-specific test results
+	pcfMetrics?: PCFTestMetrics;
+}
+
+export interface PCFProcessData {
+	ruleSetId?: string;
+	evaluationType?: 'POLICY_CONTROL' | 'QOS_DECISION' | 'CHARGING_DECISION';
+	inputContext?: Record<string, any>;
+	outputDecision?: Record<string, any>;
+	evaluationTrace?: PolicyEvaluationTrace[];
+}
+
+export interface PolicyEvaluationTrace {
+	timestamp: string;
+	ruleId: string;
+	ruleName: string;
+	conditionsMet: boolean;
+	actionsExecuted: string[];
+	executionTime: number;
+	decision: 'ALLOW' | 'DENY' | 'MODIFY';
+}
+
+export interface PCFTestMetrics {
+	totalPolicyEvaluations: number;
+	rulesTriggered: Record<string, number>;
+	averageEvaluationTime: number;
+	qosDecisions: number;
+	chargingEvents: number;
+	policyDenials: number;
+	evaluationTraces: PolicyEvaluationTrace[];
+}
+
+export type ViewMode = 'full' | 'pcf_focus' | 'network_focus';
+
+export interface FlowViewConfig {
+	mode: ViewMode;
+	showTimeline: boolean;
+	showPCFMetrics: boolean;
+	collapseMockNodes: boolean;
 }

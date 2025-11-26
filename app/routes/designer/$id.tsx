@@ -1,12 +1,54 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Button, Card, Form, Input, Select, Collapse, Descriptions, List, Dropdown, Modal, Tabs, Tree } from "antd";
-import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined, SettingOutlined, EllipsisOutlined } from "@ant-design/icons";
+import { Button, Card, Form, Input, Select, Collapse, Descriptions, List, Dropdown, Modal, Tabs, Tree, Tag } from "antd";
+import { ArrowLeftOutlined, SaveOutlined, PlayCircleOutlined, PlusOutlined, FileTextOutlined, SettingOutlined, EllipsisOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import PolicyFlowGraphV2 from "../../components/designer/PolicyFlowGraphV2";
 import { mockFlows, mockFlowsData } from "../../data/mockFlows";
-import type { FlowData } from "../../types/flow.types";
+import { pcfFlowCategories, type FlowTemplate } from "../../data/pcfFlowCategories";
+import { generateFlowFromTemplate } from "../../utils/flowGenerator";
+import type { FlowData, FlowEdge } from "../../types/flow.types";
 
 const { Panel } = Collapse;
+
+// Helper function to ensure flow has edges
+const ensureFlowHasEdges = (flow: FlowData | null): FlowData | null => {
+	if (!flow) return null;
+	
+	// If flow already has edges, return as is
+	if (flow.edges && flow.edges.length > 0) {
+		return flow;
+	}
+	
+	// Create a copy with generated edges
+	const flowWithEdges: FlowData = { ...flow };
+	const edges: FlowEdge[] = [];
+	
+	// PCF-centric: Single bidirectional edges between PCF and other NFs
+	const pcfNode = flow.nodes?.find(n => n.nfType === 'PCF' || n.id === 'pcf-main');
+	const otherNodes = flow.nodes?.filter(n => n.id !== pcfNode?.id && n.nodeRole !== 'PCF_LOGIC');
+	
+	if (pcfNode && otherNodes && otherNodes.length > 0) {
+		let seq = 1;
+		otherNodes.forEach((nfNode, idx) => {
+			// Single bidirectional edge: NF ↔ PCF
+			edges.push({
+				id: `edge-${idx}`,
+				source: nfNode.id,
+				target: pcfNode.id,
+				label: `${seq}. ${nfNode.nfType} Procedure`,
+				sequence: seq++,
+				procedureName: `${nfNode.nfType} Procedure`,
+				animated: false,
+				style: { stroke: '#10B981', strokeWidth: 2 },
+				markerEnd: { type: 'arrowclosed', color: '#10B981' },
+				type: 'smoothstep'
+			});
+		});
+	}
+	
+	flowWithEdges.edges = edges;
+	return flowWithEdges;
+};
 
 export function meta() {
 	return [{ title: "Policy Detail - 5G Policy Studio" }];
@@ -81,7 +123,9 @@ export default function PolicyDetail() {
 	
 	// Flow management state
 	const [selectedFlowId, setSelectedFlowId] = useState<string>('sm-policy-association');
-	const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(mockFlowsData['sm-policy-association']);
+	const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(
+		ensureFlowHasEdges(mockFlowsData['sm-policy-association'])
+	);
 	
 	// Selection states for properties panel
 	const [selectedProcessNode, setSelectedProcessNode] = useState<any>(null);
@@ -209,23 +253,8 @@ export default function PolicyDetail() {
 		return 'That\'s an interesting question! I\'m here to help with your 5G policy studio. Could you provide more details about what you\'re working on?';
 	};
 
-	// Folders state
-	const [folders, setFolders] = useState({
-		session: [
-			{ id: 'sm-policy-association', name: '1.1. SM Policy Association' },
-			{ id: 'qos-on-demand', name: '1.2. QoS on Demand' },
-			{ id: 'vonr-call', name: '1.3. VoNR Call' }
-		],
-		access: [
-			{ id: 'am-policy-association', name: '2.1. AM Policy Association' },
-			{ id: 'am-policy-authorization', name: '2.2. AM Policy Authorization' }
-		],
-		ue: [
-			{ id: 'ue-policy-association', name: '3.1. UE Policy Association' },
-			{ id: 'ue-policy-delivery', name: '3.2. UE Policy Delivery' },
-			{ id: 'af-guidance-ursp', name: '3.3. AF guidance on URSP' }
-		]
-	});
+	// Flow template selection state
+	const [selectedFlowTemplate, setSelectedFlowTemplate] = useState<FlowTemplate | null>(null);
 
 	const [form] = Form.useForm();
 
@@ -245,7 +274,7 @@ export default function PolicyDetail() {
 	// Load flow data when selected
 	const handleFlowSelect = (flowId: string) => {
 		setSelectedFlowId(flowId);
-		setCurrentFlowData(mockFlowsData[flowId] || null);
+		setCurrentFlowData(ensureFlowHasEdges(mockFlowsData[flowId] || null));
 		// Clear selections
 		setSelectedProcessNode(null);
 		setSelectedNFNode(null);
@@ -256,58 +285,71 @@ export default function PolicyDetail() {
 	const handleCreateFlow = () => {
 		setIsModalVisible(true);
 	};
-
-	// Create new folder
-	const handleCreateFolder = () => {
-		console.log('Create new folder');
-		// TODO: Implement folder creation
+	
+	// Create flow from template directly
+	const handleCreateFlowFromTemplate = () => {
+		if (!selectedFlowTemplate) return;
+		
+		const newFlowId = `flow-${Date.now()}`;
+		const newFlow = generateFlowFromTemplate(selectedFlowTemplate);
+		
+		// Override metadata
+		newFlow.metadata.id = newFlowId;
+		
+		mockFlowsData[newFlowId] = newFlow;
+		mockFlows.push({
+			id: newFlowId,
+			name: newFlow.metadata.name,
+			description: newFlow.metadata.description,
+			lastModified: new Date().toISOString().split('T')[0],
+			version: newFlow.metadata.version,
+		});
+		
+		handleFlowSelect(newFlowId);
+		setSelectedFlowTemplate(null);
 	};
 
-	// Create new category
-	const handleCreateCategory = () => {
-		console.log('Create new category');
-		// TODO: Implement category creation
+	// Handle flow template selection
+	const handleFlowTemplateSelect = (template: FlowTemplate) => {
+		setSelectedFlowTemplate(template);
+		// TODO: Generate actual flow data from template
 	};
 
 	const handleModalOk = () => {
 		if (!newFlowName.trim() || !selectedCategory) return;
 
 		const newFlowId = `flow-${Date.now()}`;
-		const newFlow: FlowData = {
-			metadata: {
-				id: newFlowId,
-				name: newFlowName,
-				description: '',
-				version: '1.0.0',
-				createdAt: new Date().toISOString().split('T')[0],
-				lastModified: new Date().toISOString().split('T')[0],
-				author: 'Admin',
-			},
-			nodes: [],
-			steps: [],
-			processes: [],
-		};
+		
+		// Generate flow from template if selected
+		const newFlow: FlowData = selectedFlowTemplate
+			? generateFlowFromTemplate(selectedFlowTemplate)
+			: {
+				metadata: {
+					id: newFlowId,
+					name: newFlowName,
+					description: '',
+					version: '1.0.0',
+					createdAt: new Date().toISOString().split('T')[0],
+					lastModified: new Date().toISOString().split('T')[0],
+					author: 'Admin',
+				},
+				nodes: [],
+				steps: [],
+				processes: [],
+			};
+		
+		// Override metadata with user input
+		newFlow.metadata.id = newFlowId;
+		newFlow.metadata.name = newFlowName;
+		
 		mockFlowsData[newFlowId] = newFlow;
 		mockFlows.push({
 			id: newFlowId,
 			name: newFlowName,
-			description: '',
+			description: newFlow.metadata.description,
 			lastModified: new Date().toISOString().split('T')[0],
 			version: '1.0.0',
 		});
-
-		// Add to selected category
-		const categoryFlows = folders[selectedCategory as keyof typeof folders];
-		const mainNumber = selectedCategory === 'session' ? 1 : selectedCategory === 'access' ? 2 : 3;
-		const subNumber = categoryFlows.length + 1;
-		const newFlowItem = {
-			id: newFlowId,
-			name: `${mainNumber}.${subNumber}. ${newFlowName}`
-		};
-		setFolders(prev => ({
-			...prev,
-			[selectedCategory as keyof typeof folders]: [...prev[selectedCategory as keyof typeof folders], newFlowItem]
-		}));
 
 		handleFlowSelect(newFlowId);
 		setIsModalVisible(false);
@@ -318,13 +360,8 @@ export default function PolicyDetail() {
 	const menuItems = [
 		{
 			key: 'new-flow',
-			label: 'New flow',
+			label: 'Create custom flow',
 			onClick: handleCreateFlow,
-		},
-		{
-			key: 'new-category',
-			label: 'New category',
-			onClick: handleCreateCategory,
 		},
 	];
 
@@ -482,77 +519,54 @@ export default function PolicyDetail() {
 								<div className="flex-1 overflow-y-auto">
 									<Collapse
 										ghost
-										defaultActiveKey={['session']}
+										defaultActiveKey={['subscription-based']}
 										className="flow-collection-accordion"
 									>
-										{/* Session Management */}
-										<Panel
-											header={
-												<span className="text-sm font-medium text-gray-700">Session Management</span>
-											}
-											key="session"
-											className="custom-panel"
-										>
-											<div className="space-y-1">
-												{folders.session.map(flow => (
-													<div
-														key={flow.id}
-														className={`text-sm px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md transition-colors ml-4 ${
-															selectedFlowId === flow.id ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-500' : 'text-gray-600'
-														}`}
-														onClick={() => handleFlowSelect(flow.id)}
-													>
-														{flow.name.replace(/^\d+\.\d+\.\s*/, '')}
+										{pcfFlowCategories.map((category) => (
+											<Panel
+												header={
+													<div className="flex items-center gap-2">
+														<span className="text-lg">{category.icon}</span>
+														<span className="text-sm font-medium text-gray-700">{category.name}</span>
+														<span className="text-xs text-gray-400">({category.flows.length})</span>
 													</div>
-												))}
-											</div>
-										</Panel>
-
-										{/* Access & Mobility Policy */}
-										<Panel
-											header={
-												<span className="text-sm font-medium text-gray-700">Access & Mobility</span>
-											}
-											key="access"
-											className="custom-panel"
-										>
-											<div className="space-y-1">
-												{folders.access.map(flow => (
-													<div
-														key={flow.id}
-														className={`text-sm px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md transition-colors ml-4 ${
-															selectedFlowId === flow.id ? 'bg-green-50 text-green-700 border-l-2 border-green-500' : 'text-gray-600'
-														}`}
-														onClick={() => handleFlowSelect(flow.id)}
-													>
-														{flow.name.replace(/^\d+\.\d+\.\s*/, '')}
-													</div>
-												))}
-											</div>
-										</Panel>
-
-										{/* UE Policy */}
-										<Panel
-											header={
-												<span className="text-sm font-medium text-gray-700">UE Policy</span>
-											}
-											key="ue"
-											className="custom-panel"
-										>
-											<div className="space-y-1">
-												{folders.ue.map(flow => (
-													<div
-														key={flow.id}
-														className={`text-sm px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md transition-colors ml-4 ${
-															selectedFlowId === flow.id ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600'
-														}`}
-														onClick={() => handleFlowSelect(flow.id)}
-													>
-														{flow.name.replace(/^\d+\.\d+\.\s*/, '')}
-													</div>
-												))}
-											</div>
-										</Panel>
+												}
+												key={category.id}
+												className="custom-panel"
+											>
+												<div className="space-y-1">
+													{category.flows.map((flow, index) => (
+														<div
+															key={flow.id}
+															className={`text-sm px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md transition-colors ml-4 ${
+																selectedFlowTemplate?.id === flow.id 
+																	? `bg-${category.color}-50 text-${category.color}-700 border-l-2`
+																	: 'text-gray-600'
+															}`}
+															onClick={() => handleFlowTemplateSelect(flow)}
+															style={{
+																borderLeftColor: selectedFlowTemplate?.id === flow.id ? category.color : 'transparent'
+															}}
+														>
+															<div className="font-medium">{flow.name}</div>
+															<div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+																<span className={`px-2 py-0.5 rounded text-xs ${
+																	flow.trigger === 'subscription' ? 'bg-blue-100 text-blue-700' :
+																	flow.trigger === 'on-demand' ? 'bg-green-100 text-green-700' :
+																	'bg-orange-100 text-orange-700'
+																}`}>
+																	{flow.trigger}
+																</span>
+																<span className="text-gray-400">•</span>
+																<span>{flow.policyType} Policy</span>
+																<span className="text-gray-400">•</span>
+																<span>{flow.standard}</span>
+															</div>
+														</div>
+													))}
+												</div>
+											</Panel>
+										))}
 									</Collapse>
 								</div>
 							</div>
@@ -567,7 +581,102 @@ export default function PolicyDetail() {
 
 								{/* Procedures Tree */}
 								<div className="flex-1 overflow-y-auto p-4">
-									{currentFlowData ? (
+									{selectedFlowTemplate ? (
+										<div className="space-y-4">
+											<div>
+												<h4 className="text-sm font-semibold text-gray-700 mb-2">Flow Components</h4>
+												
+												{/* PCF Core */}
+												<div className="mb-3">
+													<div className="text-xs font-medium text-purple-700 mb-1 flex items-center gap-2">
+														<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+														PCF Core Processing
+													</div>
+													<div className="ml-4 text-xs text-gray-600">
+														Policy Control Function - Main logic module
+													</div>
+												</div>
+
+												{/* Subscription Manager */}
+												<div className="mb-3">
+													<div className="text-xs font-medium text-blue-700 mb-1 flex items-center gap-2">
+														<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+														Subscription Data Manager
+													</div>
+													<div className="ml-4 space-y-1">
+														{selectedFlowTemplate.components.subscriptionManager === 'Both' ? (
+															<>
+																<div className="text-xs text-gray-600">• ABM (OCS) - Subscriber profile</div>
+																<div className="text-xs text-gray-600">• UDR - 3GPP policy data</div>
+															</>
+														) : selectedFlowTemplate.components.subscriptionManager === 'ABM' ? (
+															<div className="text-xs text-gray-600">• ABM (OCS) - Subscriber profile</div>
+														) : (
+															<div className="text-xs text-gray-600">• UDR - 3GPP policy data</div>
+														)}
+													</div>
+												</div>
+
+												{/* Rating Engine */}
+												{selectedFlowTemplate.components.ratingEngine && (
+													<div className="mb-3">
+														<div className="text-xs font-medium text-orange-700 mb-1 flex items-center gap-2">
+															<div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+															Rating Engine
+														</div>
+														<div className="ml-4 text-xs text-gray-600">
+															Profile processing and policy calculation
+														</div>
+													</div>
+												)}
+
+												{/* External Network Functions */}
+												{selectedFlowTemplate.components.externalNFs.length > 0 && (
+													<div className="mb-3">
+														<div className="text-xs font-medium text-green-700 mb-1 flex items-center gap-2">
+															<div className="w-2 h-2 bg-green-500 rounded-full"></div>
+															External Network Functions (Mock)
+														</div>
+														<div className="ml-4 space-y-1">
+															{selectedFlowTemplate.components.externalNFs.map((nf) => (
+																<div key={nf} className="text-xs text-gray-600">• {nf}</div>
+															))}
+														</div>
+													</div>
+												)}
+											</div>
+
+											<div className="pt-3 border-t border-gray-200">
+												<h4 className="text-sm font-semibold text-gray-700 mb-2">Flow Details</h4>
+												<div className="space-y-2 text-xs">
+													<div>
+														<span className="text-gray-500">Trigger:</span>
+														<span className={`ml-2 px-2 py-0.5 rounded ${
+															selectedFlowTemplate.trigger === 'subscription' ? 'bg-blue-100 text-blue-700' :
+															selectedFlowTemplate.trigger === 'on-demand' ? 'bg-green-100 text-green-700' :
+															'bg-orange-100 text-orange-700'
+														}`}>
+															{selectedFlowTemplate.trigger}
+														</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Policy Type:</span>
+														<span className="ml-2 font-medium">{selectedFlowTemplate.policyType}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">3GPP Standard:</span>
+														<span className="ml-2 font-medium">{selectedFlowTemplate.standard}</span>
+													</div>
+													<div className="pt-2">
+														<span className="text-gray-700 block mb-1">Description:</span>
+														<p className="text-gray-600 text-xs leading-relaxed">
+															{selectedFlowTemplate.description}
+														</p>
+													</div>
+												</div>
+											</div>
+										</div>
+									) : currentFlowData ? (
 										<Tree
 											treeData={buildProceduresTree()}
 											selectedKeys={[selectedProcedureNode]}
@@ -577,7 +686,7 @@ export default function PolicyDetail() {
 										/>
 									) : (
 										<div className="text-center text-gray-400 py-8">
-											<p className="text-sm">No flow selected</p>
+											<p className="text-sm">Select a flow to see details</p>
 										</div>
 									)}
 								</div>
@@ -591,9 +700,6 @@ export default function PolicyDetail() {
 									<PolicyFlowGraphV2 
 										policyId={policy.id}
 										flowData={currentFlowData}
-										onProcessNodeSelect={setSelectedProcessNode}
-										onNFNodeSelect={setSelectedNFNode}
-										onStepSelect={setSelectedStep}
 									/>
 								) : (
 									<div className="flex items-center justify-center h-full text-gray-400">
@@ -839,42 +945,139 @@ export default function PolicyDetail() {
 											</Form>
 										</>
 									) : (
-										// Flow Properties (Default)
+										// Flow Template Properties (Default)
 										<>
-											<div className="space-y-3 text-sm">
-												<div>
-													<span className="text-gray-500">Flow Name:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.name || 'No flow selected'}</span>
-												</div>
-												<div>
-													<span className="text-gray-500">Description:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.description || '-'}</span>
-												</div>
-												<div>
-													<span className="text-gray-500">Version:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.version || '-'}</span>
-												</div>
-												<div>
-													<span className="text-gray-500">Created:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.createdAt || '-'}</span>
-												</div>
-												<div>
-													<span className="text-gray-500">Last Modified:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.lastModified || '-'}</span>
-												</div>
-												<div>
-													<span className="text-gray-500">Author:</span>
-													<span className="ml-2 text-gray-900">{currentFlowData?.metadata.author || '-'}</span>
-												</div>
-												<div className="pt-4 border-t border-gray-200">
-													<div className="text-gray-500 mb-2">Statistics:</div>
-													<div className="space-y-1 text-xs">
-														<div>Nodes: {currentFlowData?.nodes.length || 0}</div>
-														<div>Steps: {currentFlowData?.steps.length || 0}</div>
-														<div>Processes: {currentFlowData?.processes.length || 0}</div>
+											{selectedFlowTemplate ? (
+												<div className="space-y-4">
+													<div>
+														<h3 className="text-lg font-semibold text-gray-800 mb-2">
+															{selectedFlowTemplate.name}
+														</h3>
+														<p className="text-sm text-gray-600 leading-relaxed">
+															{selectedFlowTemplate.description}
+														</p>
+													</div>
+
+													<div className="pt-4 border-t border-gray-200 space-y-3">
+														<div>
+															<span className="text-xs font-semibold text-gray-500 uppercase">Policy Type</span>
+															<div className="mt-1">
+																<Tag color={
+																	selectedFlowTemplate.policyType === 'SM' ? 'blue' :
+																	selectedFlowTemplate.policyType === 'AM' ? 'green' : 'purple'
+																}>
+																	{selectedFlowTemplate.policyType} Policy
+																</Tag>
+															</div>
+														</div>
+
+														<div>
+															<span className="text-xs font-semibold text-gray-500 uppercase">Trigger Mechanism</span>
+															<div className="mt-1">
+																<Tag color={
+																	selectedFlowTemplate.trigger === 'subscription' ? 'blue' :
+																	selectedFlowTemplate.trigger === 'on-demand' ? 'green' : 'orange'
+																}>
+																	{selectedFlowTemplate.trigger.toUpperCase()}
+																</Tag>
+															</div>
+														</div>
+
+														<div>
+															<span className="text-xs font-semibold text-gray-500 uppercase">3GPP Standard</span>
+															<div className="mt-1 text-sm text-gray-700 font-mono">
+																{selectedFlowTemplate.standard}
+															</div>
+														</div>
+
+														<div>
+															<span className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+																Core Components
+															</span>
+															<div className="space-y-2">
+																<div className="flex items-center gap-2 text-sm">
+																	<CheckCircleOutlined className="text-purple-600" />
+																	<span>PCF Core Engine</span>
+																</div>
+																{selectedFlowTemplate.components.ratingEngine && (
+																	<div className="flex items-center gap-2 text-sm">
+																		<CheckCircleOutlined className="text-orange-600" />
+																		<span>Rating Engine</span>
+																	</div>
+																)}
+																<div className="flex items-center gap-2 text-sm">
+																	<CheckCircleOutlined className="text-blue-600" />
+																	<span>
+																		{selectedFlowTemplate.components.subscriptionManager === 'Both' ? 'ABM & UDR' :
+																		selectedFlowTemplate.components.subscriptionManager}
+																	</span>
+																</div>
+															</div>
+														</div>
+
+														<div>
+															<span className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+																Network Functions ({selectedFlowTemplate.components.externalNFs.length})
+															</span>
+															<div className="flex flex-wrap gap-1">
+																{selectedFlowTemplate.components.externalNFs.map((nf) => (
+																	<Tag key={nf} className="text-xs">{nf}</Tag>
+																))}
+															</div>
+														</div>
+													</div>
+
+													<div className="pt-4 border-t border-gray-200">
+														<Button 
+															type="primary" 
+															block 
+															icon={<PlayCircleOutlined />}
+															onClick={handleCreateFlowFromTemplate}
+														>
+															Create Flow from Template
+														</Button>
 													</div>
 												</div>
-											</div>
+											) : currentFlowData ? (
+												<div className="space-y-3 text-sm">
+													<div>
+														<span className="text-gray-500">Flow Name:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.name}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Description:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.description || '-'}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Version:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.version}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Created:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.createdAt}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Last Modified:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.lastModified}</span>
+													</div>
+													<div>
+														<span className="text-gray-500">Author:</span>
+														<span className="ml-2 text-gray-900">{currentFlowData.metadata.author}</span>
+													</div>
+													<div className="pt-4 border-t border-gray-200">
+														<div className="text-gray-500 mb-2">Statistics:</div>
+														<div className="space-y-1 text-xs">
+															<div>Nodes: {currentFlowData.nodes.length}</div>
+															<div>Steps: {currentFlowData.steps.length}</div>
+															<div>Processes: {currentFlowData.processes.length}</div>
+														</div>
+													</div>
+												</div>
+											) : (
+												<div className="text-center text-gray-400 py-8">
+													<p className="text-sm">Select a flow template to see details</p>
+												</div>
+											)}
 										</>
 									)}
 								</div>
